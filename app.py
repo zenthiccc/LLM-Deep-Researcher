@@ -1,71 +1,102 @@
+import html
+import re
 import gradio as gr
 from dotenv import load_dotenv
 from research_manager import ResearchManager
 from clarifier_agent import NUM_QUESTIONS
-from styles import CSS, JS, EXAMPLES, HEADER_HTML
+from styles import CSS, JS, EXAMPLES, TOPBAR_HTML, GREETING_HTML, ASSISTANT_LABEL_HTML
 
 load_dotenv(override=True)
 
 
-async def clarify(query: str):
-    """ Generate clarifying questions and reveal the clarification panel """
-    if not query.strip():
-        return [[], gr.update(visible=False), ""] + [gr.update()] * (2 * NUM_QUESTIONS)
-    questions = await ResearchManager().clarify(query)
-    labels = [gr.update(value=f"**{i + 1}. {q}**") for i, q in enumerate(questions)]
-    answers = [gr.update(value="") for _ in questions]
-    return [questions, gr.update(visible=True), ""] + labels + answers
-
-
-async def run(query: str, questions: list[str], *answers: str):
-    """ Hide the clarification panel and stream the research, using any answers given """
-    clarifications = list(zip(questions, answers))
-    yield gr.update(visible=False), "Starting research..."
-    async for status_update in ResearchManager().run(query, clarifications):
-        yield gr.update(visible=False), status_update
-
-
-async def run_skip(query: str):
-    """ Run the research on the raw query, without clarifications """
-    async for update in run(query, []):
-        yield update
+def status_html(text: str) -> str:
+    """ Render a progress line with a pulsing dot, keeping any URL clickable """
+    body = re.sub(r"(https?://\S+)", r'<a href="\1" target="_blank">trace</a>', html.escape(text))
+    return f'<div class="dr-status"><span class="dr-dot"></span>{body}</div>'
 
 
 with gr.Blocks(title="Deep Research") as ui:
-    gr.HTML(HEADER_HTML)
+    query_state = gr.State("")
     questions_state = gr.State([])
 
-    with gr.Row(elem_classes="dr-query-row"):
-        query_textbox = gr.Textbox(
-            placeholder="Type a research question...",
-            show_label=False,
-            container=False,
-            autofocus=True,
-            elem_id="dr-query",
-            scale=5,
-        )
-        run_button = gr.Button("Investigate", variant="primary", elem_id="dr-run", scale=1)
+    gr.HTML(TOPBAR_HTML)
 
-    with gr.Group(visible=False, elem_id="dr-clarify") as clarify_group:
-        gr.HTML('<div class="dr-clarify-label">A few questions first</div>')
-        question_labels, answer_boxes = [], []
-        for i in range(NUM_QUESTIONS):
-            question_labels.append(gr.Markdown(elem_classes="dr-question"))
-            answer_boxes.append(gr.Textbox(show_label=False, placeholder="Your answer (optional)", elem_classes="dr-answer"))
-        with gr.Row(elem_classes="dr-clarify-actions"):
-            start_button = gr.Button("Start research", variant="primary", elem_id="dr-start")
-            skip_button = gr.Button("Skip clarifications", variant="secondary", elem_id="dr-skip")
+    with gr.Column(elem_id="dr-thread"):
+        with gr.Column(elem_id="dr-home") as home:
+            gr.HTML(GREETING_HTML)
 
-    gr.HTML('<div class="dr-examples-label">Try one</div>')
-    gr.Examples(examples=EXAMPLES, inputs=query_textbox, elem_id="dr-examples")
+        user_message = gr.Markdown(visible=False, elem_id="dr-user-msg")
 
-    report = gr.Markdown(elem_id="dr-report")
+        with gr.Group(visible=False, elem_id="dr-clarify") as clarify_group:
+            gr.HTML(ASSISTANT_LABEL_HTML + '<p class="dr-clarify-intro">A few quick questions so I can focus the research. Answer any you like.</p>')
+            question_labels, answer_boxes = [], []
+            for i in range(NUM_QUESTIONS):
+                question_labels.append(gr.Markdown(elem_classes="dr-question"))
+                answer_boxes.append(gr.Textbox(show_label=False, container=False, placeholder="Your answer (optional)", elem_classes="dr-answer"))
+            with gr.Row(elem_classes="dr-clarify-actions"):
+                start_button = gr.Button("Start research", variant="primary", elem_id="dr-start", scale=0)
+                skip_button = gr.Button("Skip", variant="secondary", elem_id="dr-skip", scale=0)
 
-    clarify_outputs = [questions_state, clarify_group, report] + question_labels + answer_boxes
-    run_button.click(clarify, inputs=query_textbox, outputs=clarify_outputs)
+        status = gr.HTML(elem_id="dr-status-wrap")
+        report = gr.Markdown(elem_id="dr-report")
+
+    with gr.Column(elem_id="dr-composer-wrap"):
+        with gr.Row(elem_id="dr-composer"):
+            query_textbox = gr.Textbox(
+                placeholder="What would you like to research?",
+                show_label=False,
+                container=False,
+                autofocus=True,
+                elem_id="dr-query",
+                scale=1,
+            )
+            send_button = gr.Button("↑", variant="primary", elem_id="dr-send", scale=0, min_width=0)
+        with gr.Column(elem_id="dr-examples-wrap") as examples_wrap:
+            gr.Examples(examples=EXAMPLES, inputs=query_textbox, elem_id="dr-examples", label=None)
+
+    async def clarify(query: str):
+        """ Show the query as a message, then ask the clarifying questions """
+        query = query.strip()
+        if not query:
+            return
+        yield {
+            query_state: query,
+            query_textbox: "",
+            home: gr.update(visible=False),
+            examples_wrap: gr.update(visible=False),
+            user_message: gr.update(value=query, visible=True),
+            clarify_group: gr.update(visible=False),
+            status: status_html("Thinking of a few questions..."),
+            report: "",
+        }
+        questions = await ResearchManager().clarify(query)
+        updates = {questions_state: questions, clarify_group: gr.update(visible=True), status: ""}
+        for i, (label, box, question) in enumerate(zip(question_labels, answer_boxes, questions), start=1):
+            updates[label] = f"{i}. {question}"
+            updates[box] = ""
+        yield updates
+
+    async def run(query: str, questions: list[str], *answers: str):
+        """ Hide the questions and stream progress, then show the report """
+        clarifications = list(zip(questions, answers))
+        yield gr.update(visible=False), status_html("Starting research..."), ""
+        async for kind, text in ResearchManager().run(query, clarifications):
+            if kind == "report":
+                yield gr.update(visible=False), "", text
+            else:
+                yield gr.update(visible=False), status_html(text), ""
+
+    async def run_skip(query: str):
+        """ Run the research on the raw query, without clarifications """
+        async for update in run(query, []):
+            yield update
+
+    clarify_outputs = [query_state, query_textbox, home, examples_wrap, user_message, clarify_group, status, report, questions_state] + question_labels + answer_boxes
+    run_outputs = [clarify_group, status, report]
+    send_button.click(clarify, inputs=query_textbox, outputs=clarify_outputs)
     query_textbox.submit(clarify, inputs=query_textbox, outputs=clarify_outputs)
-    start_button.click(run, inputs=[query_textbox, questions_state] + answer_boxes, outputs=[clarify_group, report])
-    skip_button.click(run_skip, inputs=query_textbox, outputs=[clarify_group, report])
+    start_button.click(run, inputs=[query_state, questions_state] + answer_boxes, outputs=run_outputs)
+    skip_button.click(run_skip, inputs=query_state, outputs=run_outputs)
 
 
 if __name__ == "__main__":
