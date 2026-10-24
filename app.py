@@ -36,6 +36,13 @@ with gr.Blocks(title="Deep Research") as ui:
             with gr.Row(elem_classes="dr-clarify-actions"):
                 start_button = gr.Button("Start research", variant="primary", elem_id="dr-start", scale=0)
                 skip_button = gr.Button("Skip", variant="secondary", elem_id="dr-skip", scale=0)
+                citation_style = gr.Radio(
+                    choices=[("IEEE", "ieee"), ("APA", "apa")],
+                    value="ieee",
+                    label="References",
+                    elem_id="dr-style",
+                    scale=0,
+                )
 
         status = gr.HTML(elem_id="dr-status-wrap")
         report = gr.Markdown(elem_id="dr-report")
@@ -76,27 +83,27 @@ with gr.Blocks(title="Deep Research") as ui:
             updates[box] = ""
         yield updates
 
-    async def run(query: str, questions: list[str], *answers: str):
+    async def run(query: str, questions: list[str], style: str, *answers: str):
         """ Hide the questions and stream progress, then show the report """
         clarifications = list(zip(questions, answers))
         yield gr.update(visible=False), status_html("Starting research..."), ""
-        async for kind, text in ResearchManager().run(query, clarifications):
+        async for kind, text in ResearchManager().run(query, clarifications, style):
             if kind == "report":
                 yield gr.update(visible=False), "", text
             else:
                 yield gr.update(visible=False), status_html(text), ""
 
-    async def run_skip(query: str):
+    async def run_skip(query: str, style: str):
         """ Run the research on the raw query, without clarifications """
-        async for update in run(query, []):
+        async for update in run(query, [], style):
             yield update
 
     clarify_outputs = [query_state, query_textbox, home, examples_wrap, user_message, clarify_group, status, report, questions_state] + question_labels + answer_boxes
     run_outputs = [clarify_group, status, report]
     send_button.click(clarify, inputs=query_textbox, outputs=clarify_outputs)
     query_textbox.submit(clarify, inputs=query_textbox, outputs=clarify_outputs)
-    start_button.click(run, inputs=[query_state, questions_state] + answer_boxes, outputs=run_outputs)
-    skip_button.click(run_skip, inputs=query_state, outputs=run_outputs)
+    start_button.click(run, inputs=[query_state, questions_state, citation_style] + answer_boxes, outputs=run_outputs)
+    skip_button.click(run_skip, inputs=[query_state, citation_style], outputs=run_outputs)
 
 
 if __name__ == "__main__":
