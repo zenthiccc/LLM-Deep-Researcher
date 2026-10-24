@@ -208,6 +208,53 @@ footer { display: none !important; }
 #dr-skip { background: transparent !important; color: var(--dr-text) !important; border: 1px solid var(--dr-line-strong) !important; }
 #dr-skip:hover { background: var(--dr-bubble) !important; }
 
+/* Citation style: a small segmented control at the end of the actions row */
+.dr-clarify-actions > .form:has(#dr-style) {
+    margin-left: auto !important;
+    flex: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: none !important;
+}
+#dr-style {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.6rem !important;
+    width: auto !important;
+    min-width: 0 !important;
+    flex: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+}
+#dr-style > span, #dr-style .block-title, #dr-style [data-testid="block-info"] {
+    font-size: 0.82rem !important;
+    color: var(--dr-muted) !important;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+#dr-style > .wrap:not([data-testid="status-tracker"]) { display: inline-flex !important; gap: 0 !important; border: 1px solid var(--dr-line-strong) !important; border-radius: 0.6rem !important; overflow: hidden; padding: 0 !important; }
+#dr-style label {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0.4rem 0.8rem !important;
+    margin: 0 !important;
+    font-size: 0.85rem !important;
+    color: var(--dr-muted) !important;
+    white-space: nowrap;
+    cursor: pointer;
+}
+#dr-style label + label { border-left: 1px solid var(--dr-line-strong) !important; }
+#dr-style label.selected, #dr-style label:has(input:checked) { background: var(--dr-bubble) !important; color: var(--dr-text) !important; font-weight: 600; }
+#dr-style input[type="radio"] { display: none !important; }
+
 /* === STATUS === */
 .dr-status {
     display: flex;

@@ -9,6 +9,10 @@ Generate a comprehensive report based on the research and the query.
 The final output should be in markdown format, and it should be lengthy and detailed. Aim 
 for 5-10 pages of content, at least 1000 words.
 If the user gave clarifications, tailor the report's focus, depth and audience to their answers.
+The research comes with a numbered list of sources. Support factual claims with citation markers
+that use those numbers, like [3] or [1][4], placed before the sentence's final punctuation.
+Only use numbers from the list. Do not write a references, sources or bibliography section;
+one is added automatically. If no sources are listed, do not use citation markers.
 """
 
 

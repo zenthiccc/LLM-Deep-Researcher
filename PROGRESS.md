@@ -29,13 +29,22 @@ See `PLAN.md` for task definitions.
 | T8.1 | done | 2026-10-24 | Checked with mocked agents via headless screenshots |
 | T8.2 | done | 2026-10-24 | |
 | T8.3 | done | 2026-10-24 | `simple.py` updated to match |
-| V-live | pending | | Verification steps 2–5 need real API keys |
+| T9.1 | done | 2026-10-24 | Gemini tool gets `SearchContext`; OpenAI via annotations |
+| T9.2 | done | 2026-10-24 | Tested on arXiv, Wikipedia, Guardian, GitHub redirect, dead domain |
+| T9.3 | done | 2026-10-24 | IEEE renumbers by first citation; APA a/b suffixes for same author-year |
+| T9.4 | done | 2026-10-24 | |
+| T9.5 | done | 2026-10-24 | Segmented IEEE/APA control in the questions panel |
+| T9.6 | done | 2026-10-24 | |
+| T9.7 | done | 2026-10-24 | Live Gemini run: grounding returned 429, report now ends with a no-references note giving the reason |
+| V-live | partial | 2026-10-24 | Gemini plain calls work; Google Search grounding returns 429 RESOURCE_EXHAUSTED on the user's key |
 
 ## Open questions
-- Does `gemini-3.5-flash-lite` support Google Search grounding and `tool_choice=required` on the compat endpoint? Confirm on first live run.
+- Gemini Google Search grounding returns `429 RESOURCE_EXHAUSTED` on the current key while plain calls work. Needs billing enabled or the quota to reset before grounded sources can be checked live.
 
 ## Log
 - 2026-10-24 — Plan approved; tracking docs created.
 - 2026-10-24 — Phases 1–6 implemented. Offline smoke tests pass for both providers (wiring, tool selection, clarification formatting/padding, UI build, missing-key error). Live runs not yet done (no `.env`).
 - 2026-10-24 — Decided: no separate `SEARCH_MODEL_NAME`; grounding uses `DEFAULT_MODEL_NAME`. Removed email and push notification features.
 - 2026-10-24 — Chat-style UI redesign (Phase 8).
+- 2026-10-24 — References in IEEE/APA (Phase 9). Checked offline and with real page fetches; not yet run against live models.
+- 2026-10-24 — Two user runs had no references. Cause: every grounded search failed with 429 and the tool swallowed the error, so summaries came from model memory. Errors are now recorded and shown in the status and the report (T9.7).
