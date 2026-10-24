@@ -7,6 +7,7 @@ from research_manager import Progress, ResearchManager
 from clarifier_agent import NUM_QUESTIONS
 from usage import QuotaError, meter
 from llm_config import MODEL_NAME, PROVIDER_LABEL
+from link_preview import FAVICON, MIDDLEWARE
 from styles import CSS, JS, EXAMPLES, LOGIN_HTML, topbar_html, GREETING_HTML, ASSISTANT_LABEL_HTML
 
 load_dotenv(override=True)
@@ -204,4 +205,12 @@ with gr.Blocks(title="Deep Research") as ui:
 
 
 if __name__ == "__main__":
-    ui.launch(css=CSS, js=JS, theme=gr.themes.Base(), auth=AUTH, auth_message=LOGIN_HTML)
+    ui.launch(
+        css=CSS,
+        js=JS,
+        theme=gr.themes.Base(),
+        auth=AUTH,
+        auth_message=LOGIN_HTML,
+        favicon_path=FAVICON,
+        app_kwargs={"middleware": MIDDLEWARE},
+    )
