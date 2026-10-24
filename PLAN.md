@@ -59,6 +59,16 @@ Goals:
 - [x] T8.2 Warm palette with light/dark themes, serif reading text, suggestion chips
 - [x] T8.3 `ResearchManager.run` yields `("status" | "report", text)` so progress and report render separately
 
+### Phase 9 — References (APA / IEEE)
+Decisions: user picks IEEE or APA per run in the UI (default IEEE); sources are captured as structured data and formatted in Python (the writer only places `[n]` markers); page metadata (author, date, site, title) is fetched for each source; no sources → no references section (revised in T9.7).
+- [x] T9.1 `sources.py`: `Source` model, capture from the Gemini tool (run context) and OpenAI `url_citation` annotations
+- [x] T9.2 Resolve redirects, fetch page metadata (meta tags + JSON-LD), dedupe, number
+- [x] T9.3 `citations.py`: IEEE and APA entries, in-text citations, reference list
+- [x] T9.4 Writer cites with `[n]` markers; `ResearchManager.run(..., citation_style)`
+- [x] T9.5 UI citation-style selector
+- [x] T9.6 Docs: README, AGENTS.md
+- [x] T9.7 Make missing references visible: record search errors, show "N of M searches found web sources" in the status, always end the report with a References section (a note with the reason when there are no sources)
+
 ### Phase 6 — Docs & config
 - [x] T6.1 `.env.example`
 - [x] T6.2 README setup for both providers
