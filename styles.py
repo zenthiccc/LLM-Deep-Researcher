@@ -12,9 +12,9 @@ MARK_HTML = """
 </span>
 """
 
-TOPBAR_HTML = f"""
-<div class="dr-topbar">{MARK_HTML}<span class="dr-topbar-name">Deep Research</span></div>
-"""
+def topbar_html(usage: str = "") -> str:
+    """ The top bar, with the usage counter (if any) on the right """
+    return f'<div class="dr-topbar">{MARK_HTML}<span class="dr-topbar-name">Deep Research</span>{usage}</div>'
 
 GREETING_HTML = f"""
 <div class="dr-greeting">
@@ -100,6 +100,18 @@ footer { display: none !important; }
     font-size: 1.05rem;
     color: var(--dr-text);
 }
+.dr-usage {
+    margin-left: auto;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid var(--dr-line);
+    border-radius: 999px;
+    font-family: var(--dr-sans);
+    font-size: 0.8rem;
+    color: var(--dr-muted);
+    white-space: nowrap;
+    cursor: default;
+}
+.dr-usage-warn { color: var(--dr-accent); border-color: var(--dr-accent-soft); }
 
 /* === THREAD === */
 #dr-thread { gap: 1.25rem !important; padding-bottom: 1rem; }
@@ -276,6 +288,20 @@ footer { display: none !important; }
     0%, 100% { opacity: 0.35; transform: scale(0.85); }
     50% { opacity: 1; transform: scale(1); }
 }
+
+/* === USAGE LINE (under the report) === */
+.dr-usage-line {
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--dr-line);
+    font-family: var(--dr-sans);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--dr-muted);
+}
+#dr-usage-wrap .html-container { padding: 0 !important; }
+.dr-usage-line, .dr-usage-line * { color: var(--dr-muted) !important; }
+.dr-usage-line span { opacity: 0.8; }
 
 /* === REPORT (assistant message, serif reading text) === */
 #dr-report, #dr-report .prose {
