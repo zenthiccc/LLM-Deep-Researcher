@@ -1,5 +1,6 @@
 from agents import OpenAIChatCompletionsModel, AgentOutputSchema, set_tracing_disabled
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, DefaultAsyncHttpxClient
+from usage import meter
 from dotenv import load_dotenv
 import os
 
@@ -24,7 +25,15 @@ TRACING_ENABLED = PROVIDER == "openai"
 if not TRACING_ENABLED:
     set_tracing_disabled(True)
 
-_gemini_client = AsyncOpenAI(base_url=GEMINI_BASE_URL, api_key=GEMINI_API_KEY) if PROVIDER == "gemini" else None
+# Usage is tracked on Gemini only. Every HTTP request is counted and spaced out to stay under GEMINI_RPM.
+# Automatic retries are off because each retry uses up quota too.
+meter.enabled = PROVIDER == "gemini"
+_gemini_client = AsyncOpenAI(
+    base_url=GEMINI_BASE_URL,
+    api_key=GEMINI_API_KEY,
+    max_retries=0,
+    http_client=DefaultAsyncHttpxClient(event_hooks={"request": [meter.on_request], "response": [meter.on_response]}),
+) if PROVIDER == "gemini" else None
 
 
 def get_model():
