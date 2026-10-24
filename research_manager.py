@@ -32,21 +32,20 @@ class ResearchManager:
         return questions + FALLBACK_QUESTIONS[len(questions):NUM_QUESTIONS]
 
     async def run(self, query: str, clarifications: list[tuple[str, str]] | None = None):
-        """ Run the deep research process, yielding the status updates and the final report"""
+        """ Run the deep research process, yielding ("status", text) updates and finally ("report", markdown) """
         context = format_clarifications(clarifications)
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id) if TRACING_ENABLED else nullcontext():
             if TRACING_ENABLED:
-                yield f"Starting research. Trace: https://platform.openai.com/traces/trace?trace_id={trace_id}"
+                yield "status", f"Starting research. Trace: https://platform.openai.com/traces/trace?trace_id={trace_id}"
             else:
-                yield "Starting research..."
+                yield "status", "Starting research..."
             search_plan = await self.plan_searches(query, context)
-            yield f"Searches planned, starting {len(search_plan.searches)} searches..."
+            yield "status", f"Searches planned, running {len(search_plan.searches)} searches..."
             search_results = await self.perform_searches(search_plan)
-            yield "Searches complete, writing report..."
+            yield "status", "Searches complete, writing report..."
             report = await self.write_report(query, context, search_results)
-            yield "Report written, research complete"
-            yield report.markdown_report
+            yield "report", report.markdown_report
 
     async def plan_searches(self, query: str, context: str = "") -> WebSearchPlan:
         """ Plan the searches to perform for the query """
