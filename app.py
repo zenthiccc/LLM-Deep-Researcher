@@ -1,4 +1,5 @@
 import html
+import os
 import re
 import gradio as gr
 from dotenv import load_dotenv
@@ -9,6 +10,13 @@ from llm_config import MODEL_NAME, PROVIDER_LABEL
 from styles import CSS, JS, EXAMPLES, topbar_html, GREETING_HTML, ASSISTANT_LABEL_HTML
 
 load_dotenv(override=True)
+
+# Optional login: set both to require a sign-in (do this on any public deployment)
+APP_USERNAME = os.getenv("APP_USERNAME", "").strip()
+APP_PASSWORD = os.getenv("APP_PASSWORD", "").strip()
+if bool(APP_USERNAME) != bool(APP_PASSWORD):
+    raise RuntimeError("Set both APP_USERNAME and APP_PASSWORD to require a login, or neither")
+AUTH = (APP_USERNAME, APP_PASSWORD) if APP_USERNAME else None
 
 
 def status_html(text: str) -> str:
@@ -196,4 +204,4 @@ with gr.Blocks(title="Deep Research") as ui:
 
 
 if __name__ == "__main__":
-    ui.launch(css=CSS, js=JS, theme=gr.themes.Base())
+    ui.launch(css=CSS, js=JS, theme=gr.themes.Base(), auth=AUTH, auth_message="Sign in to Deep Research")
