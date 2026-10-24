@@ -1,10 +1,12 @@
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 import asyncio
 import html
+import httpx
 import json
 import os
 import re
@@ -48,6 +50,76 @@ def _duration(delta: timedelta) -> str:
     return f"{hours}h {minutes}m" if hours else f"{minutes}m"
 
 
+class FileStore:
+    """ Usage counts in a local JSON file """
+
+    def __init__(self, path: Path = USAGE_FILE):
+        self.path = path
+
+    def load(self) -> dict:
+        try:
+            return json.loads(self.path.read_text())
+        except (OSError, ValueError):
+            return {}
+
+    def save(self, state: dict) -> None:
+        try:
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(state, indent=2))
+            tmp.replace(self.path)
+        except OSError:
+            pass
+
+
+class UpstashStore:
+    """
+    Usage counts in Upstash Redis (REST API), for hosts whose disk is wiped on restart (like Render's free plan).
+    Writes go out in order on a background thread so Gemini calls aren't held up. If the first read fails,
+    nothing is written, so a network error can't overwrite the saved counts with an empty state.
+    """
+    KEY = "deep-research:usage"
+
+    def __init__(self, url: str, token: str, client: httpx.Client | None = None):
+        self.url = url
+        self.client = client or httpx.Client(headers={"Authorization": f"Bearer {token}"}, timeout=10)
+        self._writer = ThreadPoolExecutor(max_workers=1)
+        self.available = True
+
+    def _command(self, *args: str):
+        response = self.client.post(self.url, json=list(args))
+        response.raise_for_status()
+        body = response.json()
+        if "error" in body:
+            raise RuntimeError(body["error"])
+        return body.get("result")
+
+    def load(self) -> dict:
+        try:
+            value = self._command("GET", self.KEY)
+            return json.loads(value) if value else {}
+        except (httpx.HTTPError, RuntimeError, ValueError) as e:
+            self.available = False
+            print(f"Usage meter: couldn't read the counts from Upstash ({e}). This session's counts won't be saved.")
+            return {}
+
+    def save(self, state: dict) -> None:
+        if self.available:
+            self._writer.submit(self._set, json.dumps(state))
+
+    def _set(self, data: str) -> None:
+        try:
+            self._command("SET", self.KEY, data)
+        except (httpx.HTTPError, RuntimeError, ValueError) as e:
+            print(f"Usage meter: couldn't save the counts to Upstash ({e})")
+
+
+def default_store() -> FileStore | UpstashStore:
+    """ Upstash when UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set, otherwise .usage.json """
+    url = os.getenv("UPSTASH_REDIS_REST_URL", "").strip()
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
+    return UpstashStore(url, token) if url and token else FileStore()
+
+
 class UsageMeter:
     """
     Counts this app's Gemini calls and Google Search grounding calls, spaces calls out to stay under the
@@ -55,16 +127,24 @@ class UsageMeter:
     counts against the limits set in .env; calls made elsewhere on the same project aren't seen.
     """
 
-    def __init__(self, path: Path = USAGE_FILE):
+    def __init__(self, store: FileStore | UpstashStore | None = None):
         self.enabled = False
-        self.path = path
+        self.store = store or default_store()
+        self._state: dict | None = None
         self._recent: deque[float] = deque()
         self._retry_at = 0.0
         self._locks: dict[int, asyncio.Lock] = {}
-        try:
-            self.state = json.loads(path.read_text())
-        except (OSError, ValueError):
-            self.state = {}
+
+    @property
+    def state(self) -> dict:
+        """ The saved counts, read on first use (so the OpenAI provider never touches the store) """
+        if self._state is None:
+            self._state = self.store.load()
+        return self._state
+
+    @state.setter
+    def state(self, value: dict) -> None:
+        self._state = value
 
     # === Counting ===
 
@@ -85,12 +165,7 @@ class UsageMeter:
         return s
 
     def _save(self) -> None:
-        try:
-            tmp = self.path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(self.state, indent=2))
-            tmp.replace(self.path)
-        except OSError:
-            pass
+        self.store.save(self.state)
 
     def _lock(self) -> asyncio.Lock:
         loop = id(asyncio.get_running_loop())
