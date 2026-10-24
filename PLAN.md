@@ -54,6 +54,11 @@ Goals:
 - [x] T7.1 Delete `email_agent.py`, `messenger.py`; drop email step from `ResearchManager`
 - [x] T7.2 Remove `requests` dependency and email/Pushover env vars
 
+### Phase 8 — Chat-style UI
+- [x] T8.1 Chat-thread layout: greeting + composer on home, user bubble, questions and report as assistant messages, composer pinned at the bottom
+- [x] T8.2 Warm palette with light/dark themes, serif reading text, suggestion chips
+- [x] T8.3 `ResearchManager.run` yields `("status" | "report", text)` so progress and report render separately
+
 ### Phase 6 — Docs & config
 - [x] T6.1 `.env.example`
 - [x] T6.2 README setup for both providers

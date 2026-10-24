@@ -26,6 +26,9 @@ See `PLAN.md` for task definitions.
 | T6.2 | done | 2026-10-24 | |
 | T7.1 | done | 2026-10-24 | Email/push not needed |
 | T7.2 | done | 2026-10-24 | |
+| T8.1 | done | 2026-10-24 | Checked with mocked agents via headless screenshots |
+| T8.2 | done | 2026-10-24 | |
+| T8.3 | done | 2026-10-24 | `simple.py` updated to match |
 | V-live | pending | | Verification steps 2–5 need real API keys |
 
 ## Open questions
@@ -35,3 +38,4 @@ See `PLAN.md` for task definitions.
 - 2026-10-24 — Plan approved; tracking docs created.
 - 2026-10-24 — Phases 1–6 implemented. Offline smoke tests pass for both providers (wiring, tool selection, clarification formatting/padding, UI build, missing-key error). Live runs not yet done (no `.env`).
 - 2026-10-24 — Decided: no separate `SEARCH_MODEL_NAME`; grounding uses `DEFAULT_MODEL_NAME`. Removed email and push notification features.
+- 2026-10-24 — Chat-style UI redesign (Phase 8).
