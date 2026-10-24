@@ -3,6 +3,8 @@ from search_agent import search_agent
 from planner_agent import planner_agent, WebSearchItem, WebSearchPlan
 from writer_agent import writer_agent, ReportData
 from email_agent import email_agent
+from llm_config import TRACING_ENABLED
+from contextlib import nullcontext
 import asyncio
 
 class ResearchManager:
@@ -10,8 +12,11 @@ class ResearchManager:
     async def run(self, query: str):
         """ Run the deep research process, yielding the status updates and the final report"""
         trace_id = gen_trace_id()
-        with trace("Research trace", trace_id=trace_id):
-            yield f"Starting research. Trace: https://platform.openai.com/traces/trace?trace_id={trace_id}"
+        with trace("Research trace", trace_id=trace_id) if TRACING_ENABLED else nullcontext():
+            if TRACING_ENABLED:
+                yield f"Starting research. Trace: https://platform.openai.com/traces/trace?trace_id={trace_id}"
+            else:
+                yield "Starting research..."
             search_plan = await self.plan_searches(query)
             yield f"Searches planned, starting {len(search_plan.searches)} searches..."     
             search_results = await self.perform_searches(search_plan)
@@ -28,9 +33,10 @@ class ResearchManager:
         return result.final_output
 
     async def perform_searches(self, search_plan: WebSearchPlan) -> list[str]:
-        """ Perform the searches to perform for the query """
+        """ Perform the searches to perform for the query, dropping any that fail """
         tasks = [self.search(item) for item in search_plan.searches]
-        return await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return [r for r in results if isinstance(r, str) and r]
 
     async def search(self, item: WebSearchItem) -> str | None:
         """ Perform a search for the query """

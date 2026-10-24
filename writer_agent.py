@@ -1,10 +1,6 @@
 from pydantic import BaseModel, Field
 from agents import Agent
-from dotenv import load_dotenv
-import os
-
-load_dotenv(override=True)
-MODEL_NAME = os.getenv("DEFAULT_MODEL_NAME", "gpt-5.4-mini")
+from llm_config import get_model, output_schema
 
 INSTRUCTIONS = """
 You are a senior researcher tasked with writing a cohesive report for a research query.
@@ -21,4 +17,4 @@ class ReportData(BaseModel):
     follow_up_questions: list[str] = Field(description="Suggested topics to research further")
 
 
-writer_agent = Agent(name="Writer Agent", instructions=INSTRUCTIONS, model=MODEL_NAME, output_type=ReportData)
+writer_agent = Agent(name="Writer Agent", instructions=INSTRUCTIONS, model=get_model(), output_type=output_schema(ReportData))
