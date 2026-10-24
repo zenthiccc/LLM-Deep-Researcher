@@ -1,7 +1,7 @@
 EXAMPLES = [
     "Most popular AI Agent frameworks in 2026",
-    "Most commercially successful Agentic AI implementations in 2026",
-    "Celebrities who don't like cheese",
+    "Top universities in the world",
+    "Most popular TV series ever",
 ]
 
 MARK_HTML = """
