@@ -18,6 +18,9 @@ def status_html(text: str) -> str:
 
 CHECK_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
+CLARIFY_INTRO = "A few quick questions so I can focus the research. Answer any you like."
+MEMORY_INTRO = "Web search is off for this report, so I'll write it from my own knowledge. A few quick questions so I can focus it. Answer any you like."
+
 
 def progress_html(progress: Progress, previous: float = 0.0) -> str:
     """ Render a run's progress as a card: a bar that fills from the previous fraction, then the steps """
@@ -42,6 +45,10 @@ def current_topbar() -> str:
 with gr.Blocks(title="Deep Research") as ui:
     query_state = gr.State("")
     questions_state = gr.State([])
+    # Whether this query's run uses web search, and what the "Continue without web search" button resumes
+    # (None: ask the questions; otherwise the blocked run's clarifications and citation style)
+    web_search_state = gr.State(True)
+    resume_state = gr.State(None)
 
     topbar = gr.HTML(current_topbar())
 
@@ -52,7 +59,8 @@ with gr.Blocks(title="Deep Research") as ui:
         user_message = gr.Markdown(visible=False, elem_id="dr-user-msg")
 
         with gr.Group(visible=False, elem_id="dr-clarify") as clarify_group:
-            gr.HTML(ASSISTANT_LABEL_HTML + '<p class="dr-clarify-intro">A few quick questions so I can focus the research. Answer any you like.</p>')
+            gr.HTML(ASSISTANT_LABEL_HTML)
+            clarify_intro = gr.Markdown(CLARIFY_INTRO, elem_classes="dr-clarify-intro")
             question_labels, answer_boxes = [], []
             for i in range(NUM_QUESTIONS):
                 question_labels.append(gr.Markdown(elem_classes="dr-question"))
@@ -70,6 +78,7 @@ with gr.Blocks(title="Deep Research") as ui:
 
         status = gr.HTML(elem_id="dr-status-wrap")
         report = gr.Markdown(elem_id="dr-report")
+        memory_button = gr.Button("Continue without web search", variant="secondary", visible=False, elem_id="dr-memory", scale=0)
         usage_line = gr.HTML(elem_id="dr-usage-wrap")
 
     with gr.Column(elem_id="dr-composer-wrap"):
@@ -86,56 +95,98 @@ with gr.Blocks(title="Deep Research") as ui:
         with gr.Column(elem_id="dr-examples-wrap") as examples_wrap:
             gr.Examples(examples=EXAMPLES, inputs=query_textbox, elem_id="dr-examples", label=None)
 
-    async def clarify(query: str):
+    def blocked(error: QuotaError, resume) -> dict:
+        """ Show a quota notice in place of the report, with the memory-only button when that run still fits """
+        return {
+            status: "",
+            report: str(error),
+            memory_button: gr.update(visible=error.memory_ok),
+            resume_state: resume,
+            usage_line: meter.summary_html(),
+            topbar: current_topbar(),
+        }
+
+    async def ask(query: str, web_search: bool):
         """ Show the query as a message, then ask the clarifying questions """
-        query = query.strip()
-        if not query:
-            return
         yield {
             query_state: query,
+            web_search_state: web_search,
             query_textbox: "",
             home: gr.update(visible=False),
             examples_wrap: gr.update(visible=False),
             user_message: gr.update(value=query, visible=True),
             clarify_group: gr.update(visible=False),
+            memory_button: gr.update(visible=False),
             status: status_html("Thinking of a few questions..."),
             report: "",
             usage_line: "",
         }
         try:
-            questions = await ResearchManager().clarify(query)
+            questions = await ResearchManager().clarify(query, web_search)
         except QuotaError as e:
-            yield {status: "", report: str(e), usage_line: meter.summary_html(), topbar: current_topbar()}
+            yield blocked(e, None)
             return
-        updates = {questions_state: questions, clarify_group: gr.update(visible=True), status: "", topbar: current_topbar()}
+        updates = {
+            questions_state: questions,
+            clarify_intro: CLARIFY_INTRO if web_search else MEMORY_INTRO,
+            clarify_group: gr.update(visible=True),
+            status: "",
+            topbar: current_topbar(),
+        }
         for i, (label, box, question) in enumerate(zip(question_labels, answer_boxes, questions), start=1):
             updates[label] = f"{i}. {question}"
             updates[box] = ""
         yield updates
 
-    async def run(query: str, questions: list[str], style: str, *answers: str):
+    async def research(query: str, clarifications: list[tuple[str, str]], style: str, web_search: bool):
         """ Hide the questions and stream progress, then show the report """
-        clarifications = list(zip(questions, answers))
-        yield gr.update(visible=False), status_html("Starting research..."), "", "", current_topbar()
+        yield {clarify_group: gr.update(visible=False), memory_button: gr.update(visible=False), status: status_html("Starting research..."), report: "", usage_line: "", topbar: current_topbar()}
         previous = 0.0
-        async for kind, update in ResearchManager().run(query, clarifications, style):
-            if kind == "report":
-                yield gr.update(visible=False), "", update, meter.summary_html(), current_topbar()
-            else:
-                yield gr.update(visible=False), progress_html(update, previous), "", "", current_topbar()
-                previous = update.fraction
+        try:
+            async for kind, update in ResearchManager().run(query, clarifications, style, web_search):
+                if kind == "report":
+                    yield {status: "", report: update, usage_line: meter.summary_html(), topbar: current_topbar()}
+                else:
+                    yield {status: progress_html(update, previous), topbar: current_topbar()}
+                    previous = update.fraction
+        except QuotaError as e:
+            yield blocked(e, {"clarifications": clarifications, "style": style})
 
-    async def run_skip(query: str, style: str):
-        """ Run the research on the raw query, without clarifications """
-        async for update in run(query, [], style):
+    async def clarify(query: str):
+        """ A new query from the composer: always starts with web search on """
+        query = query.strip()
+        if query:
+            async for update in ask(query, True):
+                yield update
+
+    async def run(query: str, web_search: bool, questions: list[str], style: str, *answers: str):
+        async for update in research(query, list(zip(questions, answers)), style, web_search):
             yield update
 
-    clarify_outputs = [query_state, query_textbox, home, examples_wrap, user_message, clarify_group, status, report, usage_line, topbar, questions_state] + question_labels + answer_boxes
-    run_outputs = [clarify_group, status, report, usage_line, topbar]
-    send_button.click(clarify, inputs=query_textbox, outputs=clarify_outputs, show_progress="hidden")
-    query_textbox.submit(clarify, inputs=query_textbox, outputs=clarify_outputs, show_progress="hidden")
-    start_button.click(run, inputs=[query_state, questions_state, citation_style] + answer_boxes, outputs=run_outputs, show_progress="hidden")
-    skip_button.click(run_skip, inputs=[query_state, citation_style], outputs=run_outputs, show_progress="hidden")
+    async def run_skip(query: str, web_search: bool, style: str):
+        """ Run the research on the raw query, without clarifications """
+        async for update in research(query, [], style, web_search):
+            yield update
+
+    async def continue_from_memory(query: str, resume):
+        """ The quota stopped the research: redo the blocked step without web search """
+        if resume is None:
+            async for update in ask(query, False):
+                yield update
+        else:
+            yield {web_search_state: False}
+            async for update in research(query, resume["clarifications"], resume["style"], False):
+                yield update
+
+    outputs = [
+        query_state, questions_state, web_search_state, resume_state, query_textbox, home, examples_wrap, user_message,
+        clarify_group, clarify_intro, status, report, memory_button, usage_line, topbar,
+    ] + question_labels + answer_boxes
+    send_button.click(clarify, inputs=query_textbox, outputs=outputs, show_progress="hidden")
+    query_textbox.submit(clarify, inputs=query_textbox, outputs=outputs, show_progress="hidden")
+    start_button.click(run, inputs=[query_state, web_search_state, questions_state, citation_style] + answer_boxes, outputs=outputs, show_progress="hidden")
+    skip_button.click(run_skip, inputs=[query_state, web_search_state, citation_style], outputs=outputs, show_progress="hidden")
+    memory_button.click(continue_from_memory, inputs=[query_state, resume_state], outputs=outputs, show_progress="hidden")
     ui.load(current_topbar, outputs=topbar)
 
 

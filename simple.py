@@ -1,13 +1,17 @@
 import gradio as gr
 from dotenv import load_dotenv
 from research_manager import ResearchManager
+from usage import QuotaError
 
 load_dotenv(override=True)
 
 
 async def run(query: str):
-    async for _, update in ResearchManager().run(query):
-        yield str(update)
+    try:
+        async for _, update in ResearchManager().run(query):
+            yield str(update)
+    except QuotaError as e:
+        yield str(e)
 
 
 with gr.Blocks() as ui:

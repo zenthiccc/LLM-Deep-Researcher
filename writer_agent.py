@@ -13,6 +13,8 @@ The research comes with a numbered list of sources. Support factual claims with 
 that use those numbers, like [3] or [1][4], placed before the sentence's final punctuation.
 Only use numbers from the list. Do not write a references, sources or bibliography section;
 one is added automatically. If no sources are listed, do not use citation markers.
+If the input says no web search was done, write from your own knowledge, covering the listed topics.
+Don't invent statistics, quotes or recent events, and say where facts may have changed since your training data.
 """
 
 

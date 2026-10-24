@@ -30,10 +30,16 @@ SEARCH_PERIOD = os.getenv("GEMINI_SEARCH_PERIOD", "month").strip().lower()
 if SEARCH_PERIOD not in ("day", "month"):
     raise ValueError(f"GEMINI_SEARCH_PERIOD must be 'day' or 'month', got '{SEARCH_PERIOD}'")
 HOW_MANY_SEARCHES = int(os.getenv("HOW_MANY_SEARCHES", 5))
+# A run without web search: planner + writer
+MEMORY_RUN_CALLS = 2
 
 
 class QuotaError(Exception):
-    """ A run can't start or continue because the Gemini quota is used up """
+    """ A run can't start or continue because the Gemini quota is used up; memory_ok: a run without web search still fits """
+
+    def __init__(self, notice: str, memory_ok: bool = False):
+        super().__init__(notice)
+        self.memory_ok = memory_ok
 
 
 def _duration(delta: timedelta) -> str:
@@ -159,10 +165,12 @@ class UsageMeter:
             self.state["run_costs"] = (self.state["run_costs"] + [cost])[-RECENT_RUNS:]
             self._save()
 
-    def estimate_run_cost(self) -> tuple[int, int]:
+    def estimate_run_cost(self, web_search: bool = True) -> tuple[int, int]:
         """ (calls, searches) for one run, clarifying questions included """
         costs = self._roll()["run_costs"]
-        if costs:
+        if not web_search:
+            calls, searches = MEMORY_RUN_CALLS, 0
+        elif costs:
             calls = round(sum(c for c, _ in costs) / len(costs))
             searches = round(sum(s for _, s in costs) / len(costs))
         else:
@@ -201,11 +209,11 @@ class UsageMeter:
         first = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
         return f"on {first:%b} 1"
 
-    def check_can_run(self, clarify: bool = True) -> str | None:
+    def check_can_run(self, clarify: bool = True, web_search: bool = True) -> str | None:
         """ Why a run can't start (not enough calls or searches left), or None when it can """
         if not self.enabled:
             return None
-        calls, searches = self.estimate_run_cost()
+        calls, searches = self.estimate_run_cost(web_search)
         if not clarify:
             calls -= 1
         calls_left, searches_left = self.calls_left(), self.searches_left()
@@ -272,7 +280,7 @@ class UsageMeter:
         else:
             text = f"{s['calls']} calls today"
         if runs == 0:
-            text += " · no runs left"
+            text += " · no web runs left" if self.check_can_run(web_search=False) is None else " · no runs left"
         elif runs is not None:
             text += f" · ~{runs} run{'' if runs == 1 else 's'}"
         if s["searches_exhausted"] or self.searches_left() == 0:

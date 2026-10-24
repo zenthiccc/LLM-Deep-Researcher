@@ -59,42 +59,61 @@ def no_references_note(results: list[SearchResult]) -> str:
     return f"\n\n## References\n\n*No references. {reason} This report is based only on the model's own knowledge, so check its claims.*\n"
 
 
+MEMORY_BANNER = "> *Written from the model's memory, without web search. Facts may be out of date, so check them before relying on them.*\n\n"
+MEMORY_NOTE = "\n\n## References\n\n*No references. Web search was off for this report, so it is based only on the model's own knowledge.*\n"
+
+
+def quota_error(reason: str | None = None, clarify: bool = True) -> QuotaError:
+    """ A QuotaError with the notice, saying whether a run without web search still fits """
+    memory_ok = meter.check_can_run(clarify=clarify, web_search=False) is None
+    notice = meter.quota_notice(reason)
+    if memory_ok:
+        notice += "\n\nYou can still get a report written from the model's memory, without web sources."
+    return QuotaError(notice, memory_ok)
+
+
 class ResearchManager:
 
-    async def clarify(self, query: str) -> list[str]:
+    async def clarify(self, query: str, web_search: bool = True) -> list[str]:
         """ Generate exactly NUM_QUESTIONS clarifying questions for the query; QuotaError if the quota can't cover a run """
-        blocked = meter.check_can_run()
+        blocked = meter.check_can_run(web_search=web_search)
         if blocked:
-            raise QuotaError(meter.quota_notice(blocked))
+            raise quota_error(blocked)
         try:
             result = await Runner.run(clarifier_agent, f"Query: {query}")
         except RateLimitError as e:
             if not meter.enabled:
                 raise
-            raise QuotaError(meter.quota_notice()) from e
+            raise quota_error() from e
         questions = [q.strip() for q in result.final_output.questions if q.strip()][:NUM_QUESTIONS]
         return questions + FALLBACK_QUESTIONS[len(questions):NUM_QUESTIONS]
 
-    async def run(self, query: str, clarifications: list[tuple[str, str]] | None = None, citation_style: str = "ieee"):
-        """ Run the deep research process, yielding ("status", Progress) updates and finally ("report", markdown) """
-        blocked = meter.check_can_run(clarify=False)
+    async def run(self, query: str, clarifications: list[tuple[str, str]] | None = None, citation_style: str = "ieee", web_search: bool = True):
+        """
+        Run the deep research process, yielding ("status", Progress) updates and finally ("report", markdown).
+        Raises QuotaError when the Gemini quota can't cover the run. Without web_search the writer works from
+        the model's own knowledge, following the planner's topics.
+        """
+        blocked = meter.check_can_run(clarify=False, web_search=web_search)
         if blocked:
-            yield "report", meter.quota_notice(blocked)
-            return
+            raise quota_error(blocked, clarify=False)
         context = format_clarifications(clarifications)
         start = meter.snapshot()
         trace_id = gen_trace_id()
         trace_url = f"https://platform.openai.com/traces/trace?trace_id={trace_id}" if TRACING_ENABLED else ""
         with trace("Research trace", trace_id=trace_id) if TRACING_ENABLED else nullcontext():
             try:
-                async for update in self._research(query, context, citation_style, trace_url):
-                    yield update
-            except RateLimitError:
+                if web_search:
+                    async for update in self._research(query, context, citation_style, trace_url):
+                        yield update
+                    meter.record_run(start)
+                else:
+                    async for update in self._write_from_memory(query, context, trace_url):
+                        yield update
+            except RateLimitError as e:
                 if not meter.enabled:
                     raise
-                yield "report", meter.quota_notice()
-                return
-            meter.record_run(start)
+                raise quota_error(clarify=False) from e
 
     async def _research(self, query: str, context: str, citation_style: str, trace_url: str):
         """ Plan, search the web, gather sources and write the cited report """
@@ -117,6 +136,19 @@ class ResearchManager:
         report = await self.write_report(query, context, [r for r in search_results if r.summary], sources)
         markdown = apply_citations(report.markdown_report, sources, citation_style)
         yield "report", markdown if sources else markdown.rstrip() + no_references_note(search_results)
+
+    async def _write_from_memory(self, query: str, context: str, trace_url: str):
+        """ Plan the topics, then write the report from the model's own knowledge """
+        steps = ["Planning the outline", "Writing the report from the model's memory"]
+        yield "status", Progress(steps.copy(), 0, trace_url=trace_url)
+        plan = await self.plan_searches(query, context)
+        steps[0] = f"Planned {len(plan.searches)} topics"
+        yield "status", Progress(steps.copy(), 1, trace_url=trace_url)
+        topics = "\n".join(f"- {item.query}: {item.reason}" for item in plan.searches)
+        input_message = f"Original query: {query}{context}\n\nNo web search was done for this report. Topics to cover:\n{topics}"
+        result = await Runner.run(writer_agent, input_message)
+        markdown = apply_citations(result.final_output.markdown_report, [], "ieee")
+        yield "report", MEMORY_BANNER + markdown.rstrip() + MEMORY_NOTE
 
     async def plan_searches(self, query: str, context: str = "") -> WebSearchPlan:
         """ Plan the searches to perform for the query """
