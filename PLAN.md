@@ -1,0 +1,67 @@
+# PLAN — Gemini support + clarifying questions
+
+## Context
+The base app (Gradio UI → `ResearchManager` → planner → parallel search agents → writer → email) ran on the `openai-agents` SDK and is hard-wired to OpenAI (`gpt-5.4-mini`, OpenAI-hosted `WebSearchTool`, OpenAI tracing).
+
+Goals:
+1. Run on Google Gemini models, switchable with OpenAI via env.
+2. Ask the user 3 clarifying questions (skippable) before researching, and use the answers to tune search planning and the final report.
+
+## Architecture decisions
+| Topic | Decision |
+|---|---|
+| Gemini wiring | Keep `openai-agents`; use Gemini's OpenAI-compatible endpoint via `AsyncOpenAI` + `OpenAIChatCompletionsModel` |
+| Providers | `MODEL_PROVIDER=gemini\|openai` (default `openai`) |
+| Default Gemini model | `gemini-3.5-flash-lite` (override with `DEFAULT_MODEL_NAME`) |
+| Search on Gemini | `function_tool` calling `google-genai` with Google Search grounding; returns text + source URLs |
+| Tracing | Disabled on Gemini; trace link hidden |
+| Clarifications | 3 questions; two-step UI with **Skip clarifications**; answers go to planner + writer |
+| Tracking | `PLAN.md` (this file) + `PROGRESS.md` (status log) |
+
+## Tasks
+
+### Phase 0 — Tracking docs
+- [x] T0.1 Create `PLAN.md`
+- [x] T0.2 Create `PROGRESS.md`
+
+### Phase 1 — Provider abstraction
+- [x] T1.1 Add `google-genai` to `pyproject.toml`; `uv sync`
+- [x] T1.2 New `llm_config.py`: `PROVIDER`, `get_model()`, `TRACING_ENABLED`, fail-fast key check
+- [x] T1.3 All agents use `model=get_model()`
+- [x] T1.4 Non-strict output schema for Gemini (`AgentOutputSchema(..., strict_json_schema=False)`)
+- [x] T1.5 `research_manager.py`: trace + trace link only when tracing enabled
+
+### Phase 2 — Gemini web search
+- [x] T2.1 New `gemini_search.py`: `web_search` function tool with Google Search grounding
+- [x] T2.2 `search_agent.py` picks `WebSearchTool` (openai) or `web_search` (gemini)
+- [x] T2.3 `perform_searches` tolerates individual search failures
+
+### Phase 3 — Clarifying questions agent
+- [x] T3.1 New `clarifier_agent.py` with `ClarifyingQuestions` output
+- [x] T3.2 `ResearchManager.clarify(query)` → exactly 3 questions
+- [x] T3.3 `ResearchManager.run(query, clarifications=None)` + `format_clarifications()`
+
+### Phase 4 — Tune searches and report
+- [x] T4.1 Planner input + instructions use clarifications
+- [x] T4.2 Writer input + instructions use clarifications
+
+### Phase 5 — Gradio UI
+- [x] T5.1 `app.py` two-step flow: Investigate → questions → Start research / Skip
+- [x] T5.2 `styles.py` CSS for `#dr-clarify`
+- [x] T5.3 `simple.py` stays query-only (skip path)
+
+### Phase 7 — Remove email/push
+- [x] T7.1 Delete `email_agent.py`, `messenger.py`; drop email step from `ResearchManager`
+- [x] T7.2 Remove `requests` dependency and email/Pushover env vars
+
+### Phase 6 — Docs & config
+- [x] T6.1 `.env.example`
+- [x] T6.2 README setup for both providers
+
+## Verification
+1. `uv sync` succeeds.
+2. `MODEL_PROVIDER=openai uv run python app.py` — unchanged behavior, trace link shown.
+3. `MODEL_PROVIDER=gemini` — 3 questions appear; answering or skipping produces a report; no trace link.
+4. `uv run python -c "import asyncio; from research_manager import ResearchManager; print(asyncio.run(ResearchManager().clarify('EV battery tech')))"` returns 3 questions.
+5. Planner search terms reflect clarification constraints (e.g. "Europe, 2025 only").
+6. Missing API key → clear startup error.
