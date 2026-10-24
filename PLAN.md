@@ -78,6 +78,15 @@ Decisions: limits come from `.env` (`GEMINI_RPM`, `GEMINI_RPD`, `GEMINI_SEARCH_L
 - [x] T10.5 UI: top-bar counter and usage line under the report
 - [x] T10.6 Docs: `.env.example`, README, AGENTS.md
 
+### Phase 11 — Memory-only reports and progress card
+Decisions: when the search quota is used up but calls are left, the quota notice offers **Continue without web search** (never automatic); a memory-only run is planner + writer (the planner's items become the topics to cover), and the report is marked as written from memory with a no-references note; progress is a card in the thread with a filling bar and a checklist of steps.
+- [x] T11.1 `usage.py`: memory-only cost (2 calls + clarify), `check_can_run(web_search=...)`, `QuotaError.memory_ok`
+- [x] T11.2 `ResearchManager.run(..., web_search)`: memory-only path; `QuotaError` raised instead of yielding the notice
+- [x] T11.3 UI: button on the quota notice that resumes the blocked step (questions or run) without web search
+- [x] T11.4 `Progress` updates (steps, current step, fraction; per-search count) and the step card with a bar; Gradio's own loading overlay hidden
+- [x] T11.5 Docs: README, AGENTS.md
+- [x] T11.6 Show the model in use: chip in the top bar, "Model:" line under each report
+
 ### Phase 6 — Docs & config
 - [x] T6.1 `.env.example`
 - [x] T6.2 README setup for both providers

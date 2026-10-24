@@ -42,6 +42,12 @@ See `PLAN.md` for task definitions.
 | T10.4 | done | 2026-10-24 | Mocked runs: blocked before any call; mid-run 429 shows a notice |
 | T10.5 | done | 2026-10-24 | |
 | T10.6 | done | 2026-10-24 | |
+| T11.1 | done | 2026-10-24 | |
+| T11.2 | done | 2026-10-24 | Mocked runs: memory run makes only planner + writer calls; stray `[n]` and writer references stripped |
+| T11.3 | done | 2026-10-24 | Mocked: blocked at questions → memory questions; blocked at run → memory run with the same answers; calls used up → no button |
+| T11.4 | done | 2026-10-24 | Screenshots light/dark/500px. Headless Chrome doesn't advance CSS animations, so the bar fill animation was checked on a static page |
+| T11.5 | done | 2026-10-24 | |
+| T11.6 | done | 2026-10-24 | Both providers; the chip truncates on narrow screens, full name on hover |
 | V-live | partial | 2026-10-24 | Gemini plain calls work; Google Search grounding returns 429 RESOURCE_EXHAUSTED on the user's key |
 
 ## Open questions
@@ -55,3 +61,4 @@ See `PLAN.md` for task definitions.
 - 2026-10-24 — References in IEEE/APA (Phase 9). Checked offline and with real page fetches; not yet run against live models.
 - 2026-10-24 — Two user runs had no references. Cause: every grounded search failed with 429 and the tool swallowed the error, so summaries came from model memory. Errors are now recorded and shown in the status and the report (T9.7).
 - 2026-10-24 — Usage meter and rate limiting for the Gemini free tier (Phase 10). Tested offline only; no quota spent.
+- 2026-10-24 — Memory-only reports when the search quota is used up, and a step-card progress indicator (Phase 11). Tested offline only; no quota spent.

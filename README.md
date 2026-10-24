@@ -24,7 +24,7 @@ Set `MODEL_PROVIDER` in `.env`:
 | `openai` (default) | `OPENAI_API_KEY` | `gpt-5.4-mini` | OpenAI hosted `WebSearchTool` |
 | `gemini` | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` | Google Search grounding (`gemini_search.py`) |
 
-Override the model with `DEFAULT_MODEL_NAME`. Gemini runs through its OpenAI-compatible endpoint (`llm_config.py`). OpenAI tracing is turned off when using Gemini.
+Override the model with `DEFAULT_MODEL_NAME`. The model in use is shown next to the name in the top bar and under each report. Gemini runs through its OpenAI-compatible endpoint (`llm_config.py`). OpenAI tracing is turned off when using Gemini.
 
 ## Clarifying questions
 After you click **Investigate**, three questions appear. Answer any of them (blank answers are skipped), then click **Start research**. Your answers shape both the search plan and the report. **Skip clarifications** runs the research on the raw query. `simple.py` always skips.
@@ -38,5 +38,6 @@ Google doesn't report how much quota is left, so the app counts its own calls (`
 - **Meter:** the top bar shows the calls left and about how many runs that allows. Each report ends with a usage line: calls today, searches, runs left and time until the daily reset (midnight Pacific time).
 - **Rate limiting:** calls are spaced out to stay under `GEMINI_RPM`, and automatic retries are off because each retry uses up quota.
 - **Blocking:** a run won't start when fewer calls or searches are left than one run needs. The estimate is the average of your last 5 runs, about 12 calls with 3 searches. A 429 from Google marks that quota as used up until it resets.
+- **Without web search:** when only the search quota is used up, the notice has a **Continue without web search** button. That run uses about 3 calls (questions, an outline, the report) and no searches. The report is written from the model's memory, says so at the top, and has no references.
 - Counts are kept in `.usage.json` (not committed). Delete it to reset the meter, for example after you enable billing.
 

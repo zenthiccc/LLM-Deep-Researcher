@@ -9,6 +9,7 @@ Deep research app: asks the user 3 clarifying questions, plans web searches tune
 - There is no test suite. To check that the code loads without real keys:
   `MODEL_PROVIDER=gemini GEMINI_API_KEY=x OPENAI_API_KEY=x uv run python -c "import app, research_manager"` (repeat with `MODEL_PROVIDER=openai`).
   `load_dotenv(override=True)` lets a local `.env` override these variables, so run the check from a copy of the `*.py` files without `.env` (`uv run --project <repo> python ...`).
+  Don't import `simple.py` in checks: it launches its server at import.
 - Never spend the user's quota in checks: the user runs a free-tier Gemini key. Mock agents and HTTP (the `openai` client uses `httpx2`, so mock with `httpx2.MockTransport`) and ask before any live call.
 
 ## Architecture
@@ -25,10 +26,11 @@ app.py (Gradio chat UI)
 - `llm_config.py` is the single source of truth for the provider. `MODEL_PROVIDER=openai|gemini` (default `openai`), `DEFAULT_MODEL_NAME` overrides the model (defaults: `gpt-5.4-mini` / `gemini-3.5-flash-lite`). It fails fast at import when the provider's API key is missing.
 - Gemini runs through its OpenAI-compatible endpoint (`OpenAIChatCompletionsModel`). OpenAI tracing is turned off on Gemini.
 - Web search: OpenAI uses the hosted `WebSearchTool`. Gemini uses the `web_search` function tool in `gemini_search.py` (Google Search grounding via `google-genai`), because hosted OpenAI tools don't work with Gemini.
-- `ResearchManager.run` yields `("status", text)` progress updates, then one `("report", markdown)`.
+- `ResearchManager.run` yields `("status", Progress)` updates (step labels, the current step, a fill fraction; `str()` gives a plain line), then one `("report", markdown)`. `app.py` renders `Progress` as a step card with a bar.
+- Memory-only runs (`run(..., web_search=False)`): planner + writer, no search agents. The writer covers the planner's topics from its own knowledge; the report starts with a "written from the model's memory" banner and ends with a no-references note. Offered only through the **Continue without web search** button on a quota notice, when the remaining calls still cover such a run.
 - Clarification answers are formatted by `format_clarifications()` and passed to the planner and the writer only. Blank answers are left out.
 - References: the Gemini `web_search` tool records sources in the run context (`SearchContext`); OpenAI sources come from `url_citation` annotations. Reference entries are formatted in Python, never by an LLM, so nothing is invented. The writer only places `[n]` markers and must not write its own references section (one it adds anyway is stripped). `citation_style` is `"ieee"` (default) or `"apa"`. No sources → the References section is a note giving the reason (search errors are recorded in `SearchContext.errors` / `SearchResult.errors`), and the status line reports how many searches found sources. Never fail silently.
-- Usage (Gemini only, `usage.py`): `meter` counts every Gemini HTTP request (httpx hooks on the client in `llm_config.py`, `max_retries=0`) and every grounding call (`meter.acquire("search")` in `gemini_search.py`), throttles to `GEMINI_RPM`, and learns from 429s. `ResearchManager` refuses to start when `meter.check_can_run()` gives a reason (`clarify` raises `QuotaError`, `run` yields the notice as its report) and records each run's cost. Counts persist in `.usage.json` (gitignored). Remaining quota is an estimate, since Google doesn't report it.
+- Usage (Gemini only, `usage.py`): `meter` counts every Gemini HTTP request (httpx hooks on the client in `llm_config.py`, `max_retries=0`) and every grounding call (`meter.acquire("search")` in `gemini_search.py`), throttles to `GEMINI_RPM`, and learns from 429s. `ResearchManager` refuses to start when `meter.check_can_run()` gives a reason: `clarify` and `run` raise `QuotaError`, whose `memory_ok` says whether a memory-only run still fits. Each web run's cost is recorded (memory-only runs are a fixed 2 calls). Counts persist in `.usage.json` (gitignored). Remaining quota is an estimate, since Google doesn't report it.
 
 ## Conventions
 - One agent per file (`*_agent.py`): an `INSTRUCTIONS` string, Pydantic output models, and a module-level `Agent(...)`.
