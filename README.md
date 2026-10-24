@@ -49,5 +49,7 @@ Google doesn't report how much quota is left, so the app counts its own calls (`
 3. In Render: **New → Blueprint**, pick the repo. Render asks for the values marked `sync: false`: your `GEMINI_API_KEY`, a username and password (`APP_USERNAME`, `APP_PASSWORD`), your Gemini limits, and the two Upstash values.
 4. Deploy. The app is at `https://<service>.onrender.com` and asks for the username and password. After it has slept, the first visit takes about a minute.
 
+A shared link shows a preview card (title, description and `assets/preview.png`), even behind the login. The image link uses Render's own URL; with a custom domain, set `PUBLIC_URL` (e.g. `https://research.example.com`). Chat apps cache previews, so a link shared before a deploy may keep its old card for a while.
+
 Without the login, anyone with the URL can use your Gemini quota. Set both `APP_USERNAME` and `APP_PASSWORD`, or neither (the app won't start with only one).
 
