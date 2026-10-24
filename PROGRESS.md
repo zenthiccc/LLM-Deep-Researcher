@@ -36,6 +36,12 @@ See `PLAN.md` for task definitions.
 | T9.5 | done | 2026-10-24 | Segmented IEEE/APA control in the questions panel |
 | T9.6 | done | 2026-10-24 | |
 | T9.7 | done | 2026-10-24 | Live Gemini run: grounding returned 429, report now ends with a no-references note giving the reason |
+| T10.1 | done | 2026-10-24 | Offline: RPM throttle, PT midnight/month rollover, 429 per-minute vs daily |
+| T10.2 | done | 2026-10-24 | Checked through the real `AsyncOpenAI` client with an `httpx2` mock: one 429 is counted once, not retried |
+| T10.3 | done | 2026-10-24 | |
+| T10.4 | done | 2026-10-24 | Mocked runs: blocked before any call; mid-run 429 shows a notice |
+| T10.5 | done | 2026-10-24 | |
+| T10.6 | done | 2026-10-24 | |
 | V-live | partial | 2026-10-24 | Gemini plain calls work; Google Search grounding returns 429 RESOURCE_EXHAUSTED on the user's key |
 
 ## Open questions
@@ -48,3 +54,4 @@ See `PLAN.md` for task definitions.
 - 2026-10-24 — Chat-style UI redesign (Phase 8).
 - 2026-10-24 — References in IEEE/APA (Phase 9). Checked offline and with real page fetches; not yet run against live models.
 - 2026-10-24 — Two user runs had no references. Cause: every grounded search failed with 429 and the tool swallowed the error, so summaries came from model memory. Errors are now recorded and shown in the status and the report (T9.7).
+- 2026-10-24 — Usage meter and rate limiting for the Gemini free tier (Phase 10). Tested offline only; no quota spent.

@@ -7,7 +7,9 @@ Deep research app: asks the user 3 clarifying questions, plans web searches tune
 - Run the UI: `uv run python app.py` (the minimal UI is `simple.py`)
 - Config: copy `.env.example` to `.env`. Never commit `.env`.
 - There is no test suite. To check that the code loads without real keys:
-  `MODEL_PROVIDER=gemini GEMINI_API_KEY=x OPENAI_API_KEY=x uv run python -c "import app, research_manager"` (repeat with `MODEL_PROVIDER=openai`)
+  `MODEL_PROVIDER=gemini GEMINI_API_KEY=x OPENAI_API_KEY=x uv run python -c "import app, research_manager"` (repeat with `MODEL_PROVIDER=openai`).
+  `load_dotenv(override=True)` lets a local `.env` override these variables, so run the check from a copy of the `*.py` files without `.env` (`uv run --project <repo> python ...`).
+- Never spend the user's quota in checks: the user runs a free-tier Gemini key. Mock agents and HTTP (the `openai` client uses `httpx2`, so mock with `httpx2.MockTransport`) and ask before any live call.
 
 ## Architecture
 ```
@@ -26,6 +28,7 @@ app.py (Gradio chat UI)
 - `ResearchManager.run` yields `("status", text)` progress updates, then one `("report", markdown)`.
 - Clarification answers are formatted by `format_clarifications()` and passed to the planner and the writer only. Blank answers are left out.
 - References: the Gemini `web_search` tool records sources in the run context (`SearchContext`); OpenAI sources come from `url_citation` annotations. Reference entries are formatted in Python, never by an LLM, so nothing is invented. The writer only places `[n]` markers and must not write its own references section (one it adds anyway is stripped). `citation_style` is `"ieee"` (default) or `"apa"`. No sources → the References section is a note giving the reason (search errors are recorded in `SearchContext.errors` / `SearchResult.errors`), and the status line reports how many searches found sources. Never fail silently.
+- Usage (Gemini only, `usage.py`): `meter` counts every Gemini HTTP request (httpx hooks on the client in `llm_config.py`, `max_retries=0`) and every grounding call (`meter.acquire("search")` in `gemini_search.py`), throttles to `GEMINI_RPM`, and learns from 429s. `ResearchManager` refuses to start when `meter.check_can_run()` gives a reason (`clarify` raises `QuotaError`, `run` yields the notice as its report) and records each run's cost. Counts persist in `.usage.json` (gitignored). Remaining quota is an estimate, since Google doesn't report it.
 
 ## Conventions
 - One agent per file (`*_agent.py`): an `INSTRUCTIONS` string, Pydantic output models, and a module-level `Agent(...)`.

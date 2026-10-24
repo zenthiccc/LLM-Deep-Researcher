@@ -69,6 +69,15 @@ Decisions: user picks IEEE or APA per run in the UI (default IEEE); sources are 
 - [x] T9.6 Docs: README, AGENTS.md
 - [x] T9.7 Make missing references visible: record search errors, show "N of M searches found web sources" in the status, always end the report with a References section (a note with the reason when there are no sources)
 
+### Phase 10 — Usage meter and rate limiting (Gemini)
+Decisions: limits come from `.env` (`GEMINI_RPM`, `GEMINI_RPD`, `GEMINI_SEARCH_LIMIT`, `GEMINI_SEARCH_PERIOD`); throttle to RPM and refuse to start a run that the remaining quota can't cover; usage line under each report + counter in the top bar; Gemini only. Google doesn't expose remaining quota, so counts are local.
+- [x] T10.1 `usage.py`: persisted counts (midnight-PT day, monthly search period), RPM throttle, 429 parsing, run-cost estimate, summaries
+- [x] T10.2 Count every Gemini request via httpx hooks on the client; SDK retries off
+- [x] T10.3 Count grounding calls in `gemini_search.py`
+- [x] T10.4 Block clarify/run before spending when the quota can't cover a run; quota notice on a mid-run 429
+- [x] T10.5 UI: top-bar counter and usage line under the report
+- [x] T10.6 Docs: `.env.example`, README, AGENTS.md
+
 ### Phase 6 — Docs & config
 - [x] T6.1 `.env.example`
 - [x] T6.2 README setup for both providers
