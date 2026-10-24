@@ -19,7 +19,10 @@ TITLE = "Deep Research"
 DESCRIPTION = "Ask a question, answer a few of mine, and get a long report built from web sources, with IEEE or APA references."
 IMAGE_ALT = "The Deep Research logo above the words: Ask a question and get a report built from web sources."
 
-PUBLIC_FILES = {"/preview.png": PREVIEW_IMAGE, "/apple-touch-icon.png": FAVICON}
+# Bump when the icon changes: browsers cache favicons hard, and a new URL makes them fetch it again
+ICON_VERSION = "2"
+
+PUBLIC_FILES = {"/preview.png": PREVIEW_IMAGE, "/favicon.png": FAVICON, "/apple-touch-icon.png": FAVICON}
 
 # Gradio's own tags: its "Gradio" defaults, the ones it fills from the config, and the page title
 OLD_TAGS = re.compile(r'<meta\s+(?:property="og:|name="twitter:|name="description")[^>]*>\s*|<title>.*?</title>\s*', re.S)
@@ -43,7 +46,8 @@ def meta_tags(url: str) -> str:
 <meta name="description" content="{description}" />
 <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#262624" media="(prefers-color-scheme: dark)" />
-<link rel="apple-touch-icon" href="{html.escape(url, quote=True)}/apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="{html.escape(url, quote=True)}/favicon.png?v={ICON_VERSION}" />
+<link rel="apple-touch-icon" href="{html.escape(url, quote=True)}/apple-touch-icon.png?v={ICON_VERSION}" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="{title}" />
 <meta property="og:title" content="{title}" />
