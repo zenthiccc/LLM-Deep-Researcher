@@ -2,7 +2,7 @@ from agents import function_tool, RunContextWrapper
 from google import genai
 from google.genai import types
 from llm_config import GEMINI_API_KEY, MODEL_NAME
-from sources import SearchContext, Source
+from sources import SearchContext, Source, error_reason
 
 _client = genai.Client(api_key=GEMINI_API_KEY)
 _config = types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())])
@@ -19,7 +19,9 @@ async def web_search(ctx: RunContextWrapper[SearchContext], query: str) -> str:
     try:
         response = await _client.aio.models.generate_content(model=MODEL_NAME, contents=query, config=_config)
     except Exception as e:
-        return f"Search failed for '{query}': {e}"
+        reason = error_reason(e)
+        ctx.context.errors.append(reason)
+        return f"Search failed for '{query}': {reason}. No results are available."
 
     sources = []
     candidate = response.candidates[0] if response.candidates else None

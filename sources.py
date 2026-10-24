@@ -27,15 +27,24 @@ class Source:
 
 @dataclass
 class SearchContext:
-    """ Run context for one search: the search tool appends the sources it found """
+    """ Run context for one search: the search tool appends the sources it found and any errors """
     sources: list[Source] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass
 class SearchResult:
     summary: str
     sources: list[Source]
+    errors: list[str] = field(default_factory=list)
 
+
+def error_reason(error: Exception) -> str:
+    """ A one-line reason for a failed search, e.g. "429 RESOURCE_EXHAUSTED (search quota exceeded)" """
+    code, status = getattr(error, "code", None), getattr(error, "status", None)
+    if code and status:
+        return f"{code} {status}" + (" (search quota exceeded)" if code == 429 else "")
+    return (str(error).splitlines() or [type(error).__name__])[0][:150]
 
 
 def sources_from_annotations(items) -> list[Source]:
