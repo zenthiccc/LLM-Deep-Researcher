@@ -11,6 +11,8 @@ HOW_MANY_SEARCHES = int(os.getenv("HOW_MANY_SEARCHES", 5))
 INSTRUCTIONS = f"""
 You are a research assistant. Given a user query, come up with a set of web searches
 to perform to best answer the query. Output {HOW_MANY_SEARCHES} terms to query for.
+The query may come with clarifications from the user. When it does, tailor the searches to the
+stated scope, time frame, region and audience. For anything left unanswered, use sensible defaults.
 """
 
 class WebSearchItem(BaseModel):

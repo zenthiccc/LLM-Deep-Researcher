@@ -163,6 +163,69 @@ body { background: var(--dr-bg, #fafaf7); }
 
 #dr-run:active { transform: translate(2px, 2px) !important; }
 
+/* === CLARIFY === */
+#dr-clarify {
+    margin-top: 1.75rem !important;
+    padding: 1.25rem 1.4rem !important;
+    background: var(--dr-surface) !important;
+    border: 2px solid var(--dr-line) !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 var(--dr-purple) !important;
+    gap: 0.6rem !important;
+}
+
+.dr-clarify-label {
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.28em;
+    color: var(--dr-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+}
+
+.dr-question, .dr-question .prose {
+    background: transparent !important;
+    color: var(--dr-text) !important;
+    margin-top: 0.6rem !important;
+}
+
+.dr-answer, .dr-answer > div, .dr-answer .wrap, .dr-answer .block {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.dr-answer textarea, .dr-answer input {
+    background: var(--dr-bg) !important;
+    color: var(--dr-text) !important;
+    border: 1.5px solid var(--dr-line-soft) !important;
+    border-radius: 0 !important;
+    padding: 0.7rem 0.9rem !important;
+    box-shadow: none !important;
+}
+
+.dr-answer textarea:focus, .dr-answer input:focus {
+    outline: none !important;
+    border-color: var(--dr-blue) !important;
+}
+
+.dr-clarify-actions { gap: 8px !important; margin-top: 0.8rem !important; }
+
+#dr-start, #dr-skip {
+    border: 2px solid var(--dr-line) !important;
+    border-radius: 0 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.14em !important;
+    font-size: 0.8rem !important;
+    box-shadow: none !important;
+}
+
+#dr-start { background: var(--dr-amber) !important; color: #0c0c0d !important; }
+#dr-skip { background: transparent !important; color: var(--dr-text) !important; }
+#dr-start:hover, #dr-skip:hover { background: var(--dr-purple) !important; color: #ffffff !important; }
+
 /* === EXAMPLES === */
 .dr-examples-label {
     font-family: ui-monospace, SFMono-Regular, monospace;

@@ -8,6 +8,7 @@ You will be provided with the original query, and some research.
 Generate a comprehensive report based on the research and the query.
 The final output should be in markdown format, and it should be lengthy and detailed. Aim 
 for 5-10 pages of content, at least 1000 words.
+If the user gave clarifications, tailor the report's focus, depth and audience to their answers.
 """
 
 
