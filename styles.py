@@ -12,9 +12,9 @@ MARK_HTML = """
 </span>
 """
 
-def topbar_html(usage: str = "") -> str:
-    """ The top bar, with the usage counter (if any) on the right """
-    return f'<div class="dr-topbar">{MARK_HTML}<span class="dr-topbar-name">Deep Research</span>{usage}</div>'
+def topbar_html(model: str = "", usage: str = "") -> str:
+    """ The top bar: the model chip after the name, and the usage counter (if any) on the right """
+    return f'<div class="dr-topbar">{MARK_HTML}<span class="dr-topbar-name">Deep Research</span>{model}{usage}</div>'
 
 GREETING_HTML = f"""
 <div class="dr-greeting">
@@ -84,7 +84,7 @@ footer { display: none !important; }
 .gradio-container > .main { padding-left: 0 !important; padding-right: 0 !important; }
 
 /* === MARK === */
-.dr-mark { display: inline-flex; flex-direction: column; gap: 3px; width: 18px; }
+.dr-mark { display: inline-flex; flex-direction: column; gap: 3px; width: 18px; flex: none; }
 .dr-bar { height: 4px; border-radius: 2px; display: block; }
 .dr-bar-1 { background: var(--dr-accent); width: 100%; }
 .dr-bar-2 { background: var(--dr-sand);   width: 72%;  }
@@ -100,6 +100,20 @@ footer { display: none !important; }
     font-size: 1.05rem;
     color: var(--dr-text);
 }
+.dr-topbar-name { white-space: nowrap; }
+.dr-model {
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.4rem;
+    background: var(--dr-bubble);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    color: var(--dr-muted);
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+}
 .dr-usage {
     margin-left: auto;
     padding: 0.2rem 0.65rem;
@@ -109,6 +123,9 @@ footer { display: none !important; }
     font-size: 0.8rem;
     color: var(--dr-muted);
     white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     cursor: default;
 }
 .dr-usage-warn { color: var(--dr-accent); border-color: var(--dr-accent-soft); }
@@ -171,13 +188,14 @@ footer { display: none !important; }
     gap: 0.35rem !important;
 }
 
-.dr-clarify-intro {
-    font-family: var(--dr-serif);
-    font-size: 1.05rem;
-    line-height: 1.6;
-    color: var(--dr-text);
-    margin: 0 0 0.5rem;
+.dr-clarify-intro, .dr-clarify-intro * {
+    font-family: var(--dr-serif) !important;
+    font-size: 1.05rem !important;
+    line-height: 1.6 !important;
+    color: var(--dr-text) !important;
 }
+.dr-clarify-intro { padding: 0 !important; margin: 0 0 0.5rem !important; }
+.dr-clarify-intro p { margin: 0 !important; }
 
 .dr-question, .dr-question * {
     font-family: var(--dr-serif) !important;
@@ -287,6 +305,109 @@ footer { display: none !important; }
 @keyframes dr-pulse {
     0%, 100% { opacity: 0.35; transform: scale(0.85); }
     50% { opacity: 1; transform: scale(1); }
+}
+
+/* === PROGRESS (card shown while a report is made) === */
+#dr-status-wrap .html-container { padding: 0 !important; }
+.dr-progress {
+    background: var(--dr-surface);
+    border: 1px solid var(--dr-line);
+    border-radius: 0.9rem;
+    box-shadow: var(--dr-shadow);
+    padding: 1rem 1.1rem 0.9rem;
+    font-family: var(--dr-sans);
+}
+.dr-progress-bar {
+    position: relative;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--dr-line);
+    overflow: hidden;
+    margin-bottom: 0.9rem;
+}
+.dr-progress-bar span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--to);
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--dr-sand), var(--dr-accent));
+    animation: dr-fill 0.6s ease-out;
+    overflow: hidden;
+}
+/* A sheen moving along the filled part, so the bar looks alive while a step takes a while */
+.dr-progress-bar span::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: translateX(-100%);
+    animation: dr-sheen 1.6s ease-in-out infinite;
+}
+@keyframes dr-fill { from { width: var(--from); } to { width: var(--to); } }
+@keyframes dr-sheen { to { transform: translateX(100%); } }
+
+.dr-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.dr-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: var(--dr-muted);
+    margin: 0 !important;
+}
+.dr-step-active { color: var(--dr-text); font-weight: 500; }
+.dr-step-icon {
+    flex: none;
+    box-sizing: border-box;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.05rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--dr-line-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.dr-step-done .dr-step-icon { border: none; background: var(--dr-accent); color: #ffffff; }
+.dr-step-done .dr-step-icon svg { width: 0.7rem; height: 0.7rem; }
+.dr-step-active .dr-step-icon { border-color: var(--dr-accent); }
+.dr-step-active .dr-step-icon::after {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--dr-accent);
+    animation: dr-pulse 1.2s ease-in-out infinite;
+}
+.dr-progress-trace {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--dr-muted) !important;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* "Continue without web search" under a quota notice */
+#dr-memory {
+    align-self: flex-start;
+    width: auto !important;
+    min-width: 0 !important;
+    border-radius: 0.6rem !important;
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+    padding: 0.5rem 1rem !important;
+    background: var(--dr-accent) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--dr-accent) !important;
+    box-shadow: none !important;
+    transition: background 0.15s !important;
+}
+#dr-memory:hover { background: var(--dr-accent-hover) !important; border-color: var(--dr-accent-hover) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    .dr-progress-bar span, .dr-progress-bar span::after, .dr-dot, .dr-step-active .dr-step-icon::after { animation: none; }
 }
 
 /* === USAGE LINE (under the report) === */

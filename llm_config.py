@@ -12,6 +12,7 @@ if PROVIDER not in ("openai", "gemini"):
 
 DEFAULT_MODELS = {"openai": "gpt-5.4-mini", "gemini": "gemini-3.5-flash-lite"}
 MODEL_NAME = os.getenv("DEFAULT_MODEL_NAME", DEFAULT_MODELS[PROVIDER])
+PROVIDER_LABEL = {"openai": "OpenAI", "gemini": "Gemini"}[PROVIDER]
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
