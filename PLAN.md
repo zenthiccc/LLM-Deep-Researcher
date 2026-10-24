@@ -93,6 +93,7 @@ Decisions: Render Blueprint (`render.yaml`, free plan, uv build); optional login
 - [x] T12.2 `app.py`: optional login
 - [x] T12.3 `render.yaml`, `.env.example`
 - [x] T12.4 Docs: README "Deploy on Render", AGENTS.md
+- [x] T12.5 Login page styled like the chat UI (mark, serif greeting, card form, accent button; light and dark)
 
 ### Phase 6 — Docs & config
 - [x] T6.1 `.env.example`

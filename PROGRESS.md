@@ -52,6 +52,7 @@ See `PLAN.md` for task definitions.
 | T12.2 | done | 2026-10-24 | Local server: 401 without login, wrong password rejected, right password gets in |
 | T12.3 | done | 2026-10-24 | Not deployed yet: needs the user's Render and Upstash accounts |
 | T12.4 | done | 2026-10-24 | |
+| T12.5 | done | 2026-10-25 | Screenshots light/dark/500px; main app unchanged |
 | V-live | partial | 2026-10-24 | Gemini plain calls work; Google Search grounding returns 429 RESOURCE_EXHAUSTED on the user's key |
 
 ## Open questions

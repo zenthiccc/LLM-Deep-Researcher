@@ -39,7 +39,7 @@ app.py (Gradio chat UI)
 - Always use `model=get_model()`, and wrap structured outputs as `output_type=output_schema(Model)` (Gemini needs non-strict schemas). Don't read `DEFAULT_MODEL_NAME` in agent files.
 - Use one model setting for everything. Don't add per-agent or search-specific model variables (`SEARCH_MODEL_NAME` was rejected).
 - Email and push notifications were removed on purpose. Don't add them back.
-- UI styling lives in `styles.py`: color tokens on `:root`, dark theme under `.dark`, element ids prefixed `dr-`. Hidden Gradio components are not rendered, so `:has(#dr-home)` detects the home screen.
+- UI styling lives in `styles.py`: color tokens on `:root`, dark theme under `.dark`, element ids prefixed `dr-`. Hidden Gradio components are not rendered, so `:has(#dr-home)` detects the home screen. The login page doesn't get the app's CSS (it comes with the config, which needs a login), so `LOGIN_HTML` (passed as `auth_message`, which Gradio renders as HTML) carries its own `<style>` built from the shared `TOKENS_CSS`.
 
 ## Workflow
 - Ask before making architecture decisions; the user wants to be consulted on them.
