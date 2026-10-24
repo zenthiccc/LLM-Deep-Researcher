@@ -6,8 +6,8 @@ load_dotenv(override=True)
 
 
 async def run(query: str):
-    async for _, text in ResearchManager().run(query):
-        yield text
+    async for _, update in ResearchManager().run(query):
+        yield str(update)
 
 
 with gr.Blocks() as ui:

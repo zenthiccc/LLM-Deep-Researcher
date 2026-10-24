@@ -9,6 +9,7 @@ from citations import apply_citations
 from usage import QuotaError, meter
 from openai import RateLimitError
 from contextlib import nullcontext
+from dataclasses import dataclass
 import asyncio
 
 FALLBACK_QUESTIONS = [
@@ -27,12 +28,28 @@ def format_clarifications(clarifications: list[tuple[str, str]] | None) -> str:
     return "\nClarifications from the user:\n" + "\n".join(lines)
 
 
+@dataclass
+class Progress:
+    """ A run's steps: labels[i] names each step (finished ones say what they found), current is the step in progress """
+    labels: list[str]
+    current: int
+    part: float = 0.0
+    trace_url: str = ""
+
+    @property
+    def fraction(self) -> float:
+        return min((self.current + self.part) / len(self.labels), 1.0)
+
+    def __str__(self) -> str:
+        return self.labels[min(self.current, len(self.labels) - 1)] + "..."
+
+
 def search_status(results: list[SearchResult]) -> str:
-    """ "Searches complete: 2 of 3 found web sources (429 RESOURCE_EXHAUSTED ...)" """
+    """ "2 of 3 searches found web sources (429 RESOURCE_EXHAUSTED ...)" """
     found = sum(1 for r in results if r.sources)
     errors = list(dict.fromkeys(e for r in results for e in r.errors))
     reason = f" ({'; '.join(errors)})" if errors else ""
-    return f"Searches complete: {found} of {len(results)} found web sources{reason}. Gathering source details..."
+    return f"{found} of {len(results)} searches found web sources{reason}"
 
 
 def no_references_note(results: list[SearchResult]) -> str:
@@ -59,7 +76,7 @@ class ResearchManager:
         return questions + FALLBACK_QUESTIONS[len(questions):NUM_QUESTIONS]
 
     async def run(self, query: str, clarifications: list[tuple[str, str]] | None = None, citation_style: str = "ieee"):
-        """ Run the deep research process, yielding ("status", text) updates and finally ("report", markdown) """
+        """ Run the deep research process, yielding ("status", Progress) updates and finally ("report", markdown) """
         blocked = meter.check_can_run(clarify=False)
         if blocked:
             yield "report", meter.quota_notice(blocked)
@@ -67,38 +84,51 @@ class ResearchManager:
         context = format_clarifications(clarifications)
         start = meter.snapshot()
         trace_id = gen_trace_id()
+        trace_url = f"https://platform.openai.com/traces/trace?trace_id={trace_id}" if TRACING_ENABLED else ""
         with trace("Research trace", trace_id=trace_id) if TRACING_ENABLED else nullcontext():
-            if TRACING_ENABLED:
-                yield "status", f"Starting research. Trace: https://platform.openai.com/traces/trace?trace_id={trace_id}"
-            else:
-                yield "status", "Starting research..."
             try:
-                search_plan = await self.plan_searches(query, context)
-                yield "status", f"Searches planned, running {len(search_plan.searches)} searches..."
-                search_results = await self.perform_searches(search_plan)
-                yield "status", search_status(search_results)
-                sources = await gather_sources(search_results)
-                yield "status", f"Found {len(sources)} sources, writing report..." if sources else "No web sources found, writing report..."
-                report = await self.write_report(query, context, [r for r in search_results if r.summary], sources)
+                async for update in self._research(query, context, citation_style, trace_url):
+                    yield update
             except RateLimitError:
                 if not meter.enabled:
                     raise
                 yield "report", meter.quota_notice()
                 return
             meter.record_run(start)
-            markdown = apply_citations(report.markdown_report, sources, citation_style)
-            yield "report", markdown if sources else markdown.rstrip() + no_references_note(search_results)
+
+    async def _research(self, query: str, context: str, citation_style: str, trace_url: str):
+        """ Plan, search the web, gather sources and write the cited report """
+        steps = ["Planning the searches", "Searching the web", "Gathering source details", "Writing the report"]
+        yield "status", Progress(steps.copy(), 0, trace_url=trace_url)
+        search_plan = await self.plan_searches(query, context)
+        total = len(search_plan.searches)
+        steps[0] = f"Planned {total} search{'' if total == 1 else 'es'}"
+        yield "status", Progress(steps.copy(), 1, trace_url=trace_url)
+        tasks = [asyncio.create_task(self.search_safely(item)) for item in search_plan.searches]
+        for done, next_done in enumerate(asyncio.as_completed(tasks), start=1):
+            await next_done
+            yield "status", Progress(steps[:1] + [f"Searching the web, {done} of {total} done"] + steps[2:], 1, done / total, trace_url)
+        search_results = [t.result() for t in tasks]
+        steps[1] = search_status(search_results)
+        yield "status", Progress(steps.copy(), 2, trace_url=trace_url)
+        sources = await gather_sources(search_results)
+        steps[2] = f"Found {len(sources)} source{'' if len(sources) == 1 else 's'}" if sources else "No web sources found"
+        yield "status", Progress(steps.copy(), 3, trace_url=trace_url)
+        report = await self.write_report(query, context, [r for r in search_results if r.summary], sources)
+        markdown = apply_citations(report.markdown_report, sources, citation_style)
+        yield "report", markdown if sources else markdown.rstrip() + no_references_note(search_results)
 
     async def plan_searches(self, query: str, context: str = "") -> WebSearchPlan:
         """ Plan the searches to perform for the query """
         result = await Runner.run(planner_agent, f"Query: {query}{context}")
         return result.final_output
 
-    async def perform_searches(self, search_plan: WebSearchPlan) -> list[SearchResult]:
-        """ Perform the searches for the query; a search that fails comes back empty with its error """
-        tasks = [self.search(item) for item in search_plan.searches]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        return [r if isinstance(r, SearchResult) else SearchResult(summary="", sources=[], errors=[error_reason(r)]) for r in results]
+    async def search_safely(self, item: WebSearchItem) -> SearchResult:
+        """ Perform a search; one that fails comes back empty with its error """
+        try:
+            return await self.search(item)
+        except Exception as e:
+            return SearchResult(summary="", sources=[], errors=[error_reason(e)])
 
     async def search(self, item: WebSearchItem) -> SearchResult:
         """ Perform a search for the query, keeping the sources the search tool found """

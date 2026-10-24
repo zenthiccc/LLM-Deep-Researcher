@@ -2,7 +2,7 @@ import html
 import re
 import gradio as gr
 from dotenv import load_dotenv
-from research_manager import ResearchManager
+from research_manager import Progress, ResearchManager
 from clarifier_agent import NUM_QUESTIONS
 from usage import QuotaError, meter
 from styles import CSS, JS, EXAMPLES, topbar_html, GREETING_HTML, ASSISTANT_LABEL_HTML
@@ -14,6 +14,25 @@ def status_html(text: str) -> str:
     """ Render a progress line with a pulsing dot, keeping any URL clickable """
     body = re.sub(r"(https?://\S+)", r'<a href="\1" target="_blank">trace</a>', html.escape(text))
     return f'<div class="dr-status"><span class="dr-dot"></span>{body}</div>'
+
+
+CHECK_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
+
+def progress_html(progress: Progress, previous: float = 0.0) -> str:
+    """ Render a run's progress as a card: a bar that fills from the previous fraction, then the steps """
+    items = []
+    for i, label in enumerate(progress.labels):
+        if i < progress.current:
+            state, icon, text = "done", CHECK_SVG, label
+        elif i == progress.current:
+            state, icon, text = "active", "", label + "…"
+        else:
+            state, icon, text = "todo", "", label
+        items.append(f'<li class="dr-step dr-step-{state}"><span class="dr-step-icon">{icon}</span><span>{html.escape(text)}</span></li>')
+    trace = f'<a class="dr-progress-trace" href="{html.escape(progress.trace_url)}" target="_blank">View trace</a>' if progress.trace_url else ""
+    bar = f'<div class="dr-progress-bar"><span style="--from: {previous:.0%}; --to: {progress.fraction:.0%}"></span></div>'
+    return f'{ASSISTANT_LABEL_HTML}<div class="dr-progress">{bar}<ol class="dr-steps">{"".join(items)}</ol>{trace}</div>'
 
 
 def current_topbar() -> str:
@@ -98,11 +117,13 @@ with gr.Blocks(title="Deep Research") as ui:
         """ Hide the questions and stream progress, then show the report """
         clarifications = list(zip(questions, answers))
         yield gr.update(visible=False), status_html("Starting research..."), "", "", current_topbar()
-        async for kind, text in ResearchManager().run(query, clarifications, style):
+        previous = 0.0
+        async for kind, update in ResearchManager().run(query, clarifications, style):
             if kind == "report":
-                yield gr.update(visible=False), "", text, meter.summary_html(), current_topbar()
+                yield gr.update(visible=False), "", update, meter.summary_html(), current_topbar()
             else:
-                yield gr.update(visible=False), status_html(text), "", "", current_topbar()
+                yield gr.update(visible=False), progress_html(update, previous), "", "", current_topbar()
+                previous = update.fraction
 
     async def run_skip(query: str, style: str):
         """ Run the research on the raw query, without clarifications """
@@ -111,10 +132,10 @@ with gr.Blocks(title="Deep Research") as ui:
 
     clarify_outputs = [query_state, query_textbox, home, examples_wrap, user_message, clarify_group, status, report, usage_line, topbar, questions_state] + question_labels + answer_boxes
     run_outputs = [clarify_group, status, report, usage_line, topbar]
-    send_button.click(clarify, inputs=query_textbox, outputs=clarify_outputs)
-    query_textbox.submit(clarify, inputs=query_textbox, outputs=clarify_outputs)
-    start_button.click(run, inputs=[query_state, questions_state, citation_style] + answer_boxes, outputs=run_outputs)
-    skip_button.click(run_skip, inputs=[query_state, citation_style], outputs=run_outputs)
+    send_button.click(clarify, inputs=query_textbox, outputs=clarify_outputs, show_progress="hidden")
+    query_textbox.submit(clarify, inputs=query_textbox, outputs=clarify_outputs, show_progress="hidden")
+    start_button.click(run, inputs=[query_state, questions_state, citation_style] + answer_boxes, outputs=run_outputs, show_progress="hidden")
+    skip_button.click(run_skip, inputs=[query_state, citation_style], outputs=run_outputs, show_progress="hidden")
     ui.load(current_topbar, outputs=topbar)
 
 

@@ -289,6 +289,92 @@ footer { display: none !important; }
     50% { opacity: 1; transform: scale(1); }
 }
 
+/* === PROGRESS (card shown while a report is made) === */
+#dr-status-wrap .html-container { padding: 0 !important; }
+.dr-progress {
+    background: var(--dr-surface);
+    border: 1px solid var(--dr-line);
+    border-radius: 0.9rem;
+    box-shadow: var(--dr-shadow);
+    padding: 1rem 1.1rem 0.9rem;
+    font-family: var(--dr-sans);
+}
+.dr-progress-bar {
+    position: relative;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--dr-line);
+    overflow: hidden;
+    margin-bottom: 0.9rem;
+}
+.dr-progress-bar span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--to);
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--dr-sand), var(--dr-accent));
+    animation: dr-fill 0.6s ease-out;
+    overflow: hidden;
+}
+/* A sheen moving along the filled part, so the bar looks alive while a step takes a while */
+.dr-progress-bar span::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transform: translateX(-100%);
+    animation: dr-sheen 1.6s ease-in-out infinite;
+}
+@keyframes dr-fill { from { width: var(--from); } to { width: var(--to); } }
+@keyframes dr-sheen { to { transform: translateX(100%); } }
+
+.dr-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.dr-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    color: var(--dr-muted);
+    margin: 0 !important;
+}
+.dr-step-active { color: var(--dr-text); font-weight: 500; }
+.dr-step-icon {
+    flex: none;
+    box-sizing: border-box;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.05rem;
+    border-radius: 50%;
+    border: 1.5px solid var(--dr-line-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.dr-step-done .dr-step-icon { border: none; background: var(--dr-accent); color: #ffffff; }
+.dr-step-done .dr-step-icon svg { width: 0.7rem; height: 0.7rem; }
+.dr-step-active .dr-step-icon { border-color: var(--dr-accent); }
+.dr-step-active .dr-step-icon::after {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--dr-accent);
+    animation: dr-pulse 1.2s ease-in-out infinite;
+}
+.dr-progress-trace {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--dr-muted) !important;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dr-progress-bar span, .dr-progress-bar span::after, .dr-dot, .dr-step-active .dr-step-icon::after { animation: none; }
+}
+
 /* === USAGE LINE (under the report) === */
 .dr-usage-line {
     margin-top: 0.5rem;
