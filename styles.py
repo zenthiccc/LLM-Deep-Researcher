@@ -26,7 +26,7 @@ GREETING_HTML = f"""
 
 ASSISTANT_LABEL_HTML = f'<div class="dr-assistant-label">{MARK_HTML}<span>Deep Research</span></div>'
 
-CSS = """
+TOKENS_CSS = """
 :root {
     --dr-bg: #faf9f5;
     --dr-surface: #ffffff;
@@ -44,20 +44,6 @@ CSS = """
     --dr-serif: ui-serif, "Iowan Old Style", Georgia, Cambria, "Times New Roman", serif;
 }
 
-.gradio-container {
-    box-sizing: border-box !important;
-    width: 100% !important;
-    max-width: 780px !important;
-    margin: 0 auto !important;
-    padding: 1rem 1.25rem 0 !important;
-    background: var(--dr-bg) !important;
-    color: var(--dr-text) !important;
-    font-family: var(--dr-sans) !important;
-    min-height: 100vh;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
 .dark {
     --dr-bg: #262624;
     --dr-surface: #30302e;
@@ -70,6 +56,22 @@ CSS = """
     --dr-accent-hover: #c96442;
     --dr-accent-soft: #7a4a38;
     --dr-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+}
+"""
+
+CSS = TOKENS_CSS + """
+.gradio-container {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 780px !important;
+    margin: 0 auto !important;
+    padding: 1rem 1.25rem 0 !important;
+    background: var(--dr-bg) !important;
+    color: var(--dr-text) !important;
+    font-family: var(--dr-sans) !important;
+    min-height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 body, gradio-app { background: var(--dr-bg) !important; }
@@ -557,6 +559,122 @@ footer { display: none !important; }
     #dr-user-msg { max-width: 92%; }
 }
 """
+
+# The login page only gets Gradio's theme, not CSS: the app's CSS comes with its config, which needs a login.
+# Gradio renders auth_message as HTML, so it carries the login page's styles along with the greeting.
+# The message sits inside a <p>, so it uses spans only.
+LOGIN_CSS = """
+body, gradio-app { background: var(--dr-bg) !important; }
+.gradio-container:has(.dr-login) {
+    min-height: 100vh;
+    background: var(--dr-bg) !important;
+    font-family: var(--dr-sans) !important;
+}
+.gradio-container:has(.dr-login) .wrap {
+    background: var(--dr-bg) !important;
+    min-height: 100vh;
+    margin: 0 !important;
+    padding: 0 1rem;
+    box-sizing: border-box;
+}
+.gradio-container:has(.dr-login) .panel {
+    width: min(380px, 100%) !important;
+    min-width: 0 !important;
+    flex: none !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    gap: 0 !important;
+}
+.gradio-container:has(.dr-login) h2 { display: none !important; }
+.gradio-container:has(.dr-login) p.auth { margin: 0 0 1.75rem !important; }
+
+.dr-login { display: block; text-align: center; }
+.dr-login .dr-mark { display: inline-flex; flex-direction: column; gap: 5px; width: 34px; }
+.dr-login .dr-bar { height: 7px; border-radius: 4px; display: block; }
+.dr-login .dr-bar-1 { background: var(--dr-accent); width: 100%; }
+.dr-login .dr-bar-2 { background: var(--dr-sand); width: 72%; }
+.dr-login .dr-bar-3 { background: var(--dr-accent-soft); width: 46%; }
+.dr-login-title {
+    display: block;
+    font-family: var(--dr-serif);
+    font-size: 2rem;
+    letter-spacing: -0.01em;
+    color: var(--dr-text);
+    margin: 1rem 0 0.4rem;
+}
+.dr-login-sub { display: block; color: var(--dr-muted); font-size: 0.95rem; }
+
+/* The form: one card with both fields */
+.gradio-container:has(.dr-login) .form {
+    background: var(--dr-surface) !important;
+    border: 1px solid var(--dr-line) !important;
+    border-radius: 1rem !important;
+    box-shadow: var(--dr-shadow) !important;
+    padding: 1.1rem 1.1rem 0.4rem !important;
+    gap: 0 !important;
+}
+.gradio-container:has(.dr-login) .form .block {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 0 0.85rem !important;
+}
+.gradio-container:has(.dr-login) .form label > span {
+    display: block;
+    margin-bottom: 0.4rem !important;
+    font-size: 0.82rem !important;
+    font-weight: 500;
+    color: var(--dr-muted) !important;
+    background: transparent !important;
+    text-transform: capitalize;
+}
+.gradio-container:has(.dr-login) .form input {
+    background: var(--dr-bg) !important;
+    color: var(--dr-text) !important;
+    border: 1px solid var(--dr-line) !important;
+    border-radius: 0.65rem !important;
+    padding: 0.65rem 0.85rem !important;
+    font-size: 0.95rem !important;
+    box-shadow: none !important;
+    transition: border-color 0.15s !important;
+}
+.gradio-container:has(.dr-login) .form input:focus {
+    outline: none !important;
+    border-color: var(--dr-accent-soft) !important;
+}
+.gradio-container:has(.dr-login) button.primary {
+    margin-top: 1rem !important;
+    width: 100% !important;
+    padding: 0.7rem 1rem !important;
+    border-radius: 0.65rem !important;
+    border: none !important;
+    background: var(--dr-accent) !important;
+    color: #ffffff !important;
+    font-family: var(--dr-sans) !important;
+    font-weight: 500 !important;
+    font-size: 0.95rem !important;
+    box-shadow: none !important;
+    transition: background 0.15s !important;
+}
+.gradio-container:has(.dr-login) button.primary:hover { background: var(--dr-accent-hover) !important; }
+/* "Incorrect credentials" */
+.gradio-container:has(.dr-login) p.creds {
+    order: 10;
+    margin: 0.85rem 0 0 !important;
+    text-align: center;
+    font-size: 0.88rem !important;
+    color: var(--dr-accent) !important;
+}
+"""
+
+LOGIN_HTML = (
+    f"<style>{TOKENS_CSS}{LOGIN_CSS}</style>"
+    f'<span class="dr-login">{MARK_HTML.strip()}'
+    '<span class="dr-login-title">Welcome back</span>'
+    '<span class="dr-login-sub">Sign in to continue your research.</span></span>'
+)
 
 JS = """
 () => {

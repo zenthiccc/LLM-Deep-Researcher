@@ -1,0 +1,41 @@
+# Render Blueprint: New -> Blueprint, pick this repo. Render asks for the values marked sync: false.
+services:
+  - type: web
+    name: deep-research
+    runtime: python
+    plan: free
+    buildCommand: pip install uv && uv sync --frozen
+    startCommand: uv run --no-sync python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      # Gradio has to listen on all interfaces, on the port Render routes to
+      - key: GRADIO_SERVER_NAME
+        value: 0.0.0.0
+      - key: GRADIO_SERVER_PORT
+        value: 10000
+      - key: MODEL_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: HOW_MANY_SEARCHES
+        value: 3
+      # Login: the app is public, so anyone with the URL could otherwise use your quota
+      - key: APP_USERNAME
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      # Gemini limits from Google AI Studio -> Rate limits
+      - key: GEMINI_RPM
+        sync: false
+      - key: GEMINI_RPD
+        sync: false
+      - key: GEMINI_SEARCH_LIMIT
+        sync: false
+      - key: GEMINI_SEARCH_PERIOD
+        value: month
+      # Upstash Redis (free) keeps the usage counts; the free plan's disk is wiped on every restart
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false

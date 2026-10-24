@@ -39,5 +39,15 @@ Google doesn't report how much quota is left, so the app counts its own calls (`
 - **Rate limiting:** calls are spaced out to stay under `GEMINI_RPM`, and automatic retries are off because each retry uses up quota.
 - **Blocking:** a run won't start when fewer calls or searches are left than one run needs. The estimate is the average of your last 5 runs, about 12 calls with 3 searches. A 429 from Google marks that quota as used up until it resets.
 - **Without web search:** when only the search quota is used up, the notice has a **Continue without web search** button. That run uses about 3 calls (questions, an outline, the report) and no searches. The report is written from the model's memory, says so at the top, and has no references.
-- Counts are kept in `.usage.json` (not committed). Delete it to reset the meter, for example after you enable billing.
+- Counts are kept in `.usage.json` (not committed), or in Upstash Redis when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set (see Deploy on Render). Delete the file (or the `deep-research:usage` key) to reset the meter, for example after you enable billing.
+
+## Deploy on Render
+`render.yaml` sets up a free web service. Render's free plan wipes the disk on every restart, and the service sleeps after 15 idle minutes, so the usage counts are kept in a free Upstash Redis database instead.
+
+1. Push the repo to GitHub.
+2. Create a free database at [upstash.com](https://upstash.com) (Redis, any region near your Render region). From its **REST API** section, copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+3. In Render: **New → Blueprint**, pick the repo. Render asks for the values marked `sync: false`: your `GEMINI_API_KEY`, a username and password (`APP_USERNAME`, `APP_PASSWORD`), your Gemini limits, and the two Upstash values.
+4. Deploy. The app is at `https://<service>.onrender.com` and asks for the username and password. After it has slept, the first visit takes about a minute.
+
+Without the login, anyone with the URL can use your Gemini quota. Set both `APP_USERNAME` and `APP_PASSWORD`, or neither (the app won't start with only one).
 

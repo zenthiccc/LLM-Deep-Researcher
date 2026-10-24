@@ -87,6 +87,14 @@ Decisions: when the search quota is used up but calls are left, the quota notice
 - [x] T11.5 Docs: README, AGENTS.md
 - [x] T11.6 Show the model in use: chip in the top bar, "Model:" line under each report
 
+### Phase 12 — Deploy on Render
+Decisions: Render Blueprint (`render.yaml`, free plan, uv build); optional login with Gradio auth from `APP_USERNAME`/`APP_PASSWORD`; usage counts in Upstash Redis (free, durable, REST over the existing `httpx`) when its env vars are set, else `.usage.json`.
+- [x] T12.1 `usage.py`: `FileStore` / `UpstashStore`, chosen by env; lazy first read; background writes; no writes after a failed read
+- [x] T12.2 `app.py`: optional login
+- [x] T12.3 `render.yaml`, `.env.example`
+- [x] T12.4 Docs: README "Deploy on Render", AGENTS.md
+- [x] T12.5 Login page styled like the chat UI (mark, serif greeting, card form, accent button; light and dark)
+
 ### Phase 6 — Docs & config
 - [x] T6.1 `.env.example`
 - [x] T6.2 README setup for both providers

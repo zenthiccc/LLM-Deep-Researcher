@@ -48,6 +48,11 @@ See `PLAN.md` for task definitions.
 | T11.4 | done | 2026-10-24 | Screenshots light/dark/500px. Headless Chrome doesn't advance CSS animations, so the bar fill animation was checked on a static page |
 | T11.5 | done | 2026-10-24 | |
 | T11.6 | done | 2026-10-24 | Both providers; the chip truncates on narrow screens, full name on hover |
+| T12.1 | done | 2026-10-24 | Mocked Upstash (`httpx.MockTransport`): counts survive a restart; 401 and error replies turn off saving; OpenAI never reads the store |
+| T12.2 | done | 2026-10-24 | Local server: 401 without login, wrong password rejected, right password gets in |
+| T12.3 | done | 2026-10-24 | Not deployed yet: needs the user's Render and Upstash accounts |
+| T12.4 | done | 2026-10-24 | |
+| T12.5 | done | 2026-10-25 | Screenshots light/dark/500px; main app unchanged |
 | V-live | partial | 2026-10-24 | Gemini plain calls work; Google Search grounding returns 429 RESOURCE_EXHAUSTED on the user's key |
 
 ## Open questions
@@ -62,3 +67,4 @@ See `PLAN.md` for task definitions.
 - 2026-10-24 — Two user runs had no references. Cause: every grounded search failed with 429 and the tool swallowed the error, so summaries came from model memory. Errors are now recorded and shown in the status and the report (T9.7).
 - 2026-10-24 — Usage meter and rate limiting for the Gemini free tier (Phase 10). Tested offline only; no quota spent.
 - 2026-10-24 — Memory-only reports when the search quota is used up, and a step-card progress indicator (Phase 11). Tested offline only; no quota spent.
+- 2026-10-24 — Render deployment: Blueprint, optional login, usage counts in Upstash (Phase 12). Tested offline only.
