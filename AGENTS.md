@@ -47,4 +47,5 @@ Pipeline in short:
 ## Workflow
 - Ask before making architecture decisions; the user wants to be consulted on them.
 - Track work in `PLAN.md` (tasks with checkboxes) and `PROGRESS.md` (status table and log). Update both when a task is done.
+- `README.md` is the project's portfolio page: the overview, screenshots (`docs/screenshot-home-{light,dark}.png`, taken with no API calls), the architecture diagram, and setup through deployment. Keep it in step with features, env vars and the UI's wording.
 - Commits follow Conventional Commits, one logical change per commit, on a feature branch off `master`. Don't push unless asked.
