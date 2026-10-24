@@ -84,7 +84,7 @@ footer { display: none !important; }
 .gradio-container > .main { padding-left: 0 !important; padding-right: 0 !important; }
 
 /* === MARK === */
-.dr-mark { display: inline-flex; flex-direction: column; gap: 3px; width: 18px; }
+.dr-mark { display: inline-flex; flex-direction: column; gap: 3px; width: 18px; flex: none; }
 .dr-bar { height: 4px; border-radius: 2px; display: block; }
 .dr-bar-1 { background: var(--dr-accent); width: 100%; }
 .dr-bar-2 { background: var(--dr-sand);   width: 72%;  }
@@ -100,6 +100,7 @@ footer { display: none !important; }
     font-size: 1.05rem;
     color: var(--dr-text);
 }
+.dr-topbar-name { white-space: nowrap; }
 .dr-usage {
     margin-left: auto;
     padding: 0.2rem 0.65rem;
@@ -109,6 +110,9 @@ footer { display: none !important; }
     font-size: 0.8rem;
     color: var(--dr-muted);
     white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     cursor: default;
 }
 .dr-usage-warn { color: var(--dr-accent); border-color: var(--dr-accent-soft); }
