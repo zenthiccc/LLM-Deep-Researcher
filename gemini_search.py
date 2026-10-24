@@ -3,6 +3,7 @@ from google import genai
 from google.genai import types
 from llm_config import GEMINI_API_KEY, MODEL_NAME
 from sources import SearchContext, Source, error_reason
+from usage import meter
 
 _client = genai.Client(api_key=GEMINI_API_KEY)
 _config = types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())])
@@ -16,9 +17,11 @@ async def web_search(ctx: RunContextWrapper[SearchContext], query: str) -> str:
     Args:
         query: The search term to look up
     """
+    await meter.acquire("search")
     try:
         response = await _client.aio.models.generate_content(model=MODEL_NAME, contents=query, config=_config)
     except Exception as e:
+        meter.note_quota_error(e, kind="search")
         reason = error_reason(e)
         ctx.context.errors.append(reason)
         return f"Search failed for '{query}': {reason}. No results are available."

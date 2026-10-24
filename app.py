@@ -4,7 +4,8 @@ import gradio as gr
 from dotenv import load_dotenv
 from research_manager import ResearchManager
 from clarifier_agent import NUM_QUESTIONS
-from styles import CSS, JS, EXAMPLES, TOPBAR_HTML, GREETING_HTML, ASSISTANT_LABEL_HTML
+from usage import QuotaError, meter
+from styles import CSS, JS, EXAMPLES, topbar_html, GREETING_HTML, ASSISTANT_LABEL_HTML
 
 load_dotenv(override=True)
 
@@ -15,11 +16,15 @@ def status_html(text: str) -> str:
     return f'<div class="dr-status"><span class="dr-dot"></span>{body}</div>'
 
 
+def current_topbar() -> str:
+    return topbar_html(meter.compact_html())
+
+
 with gr.Blocks(title="Deep Research") as ui:
     query_state = gr.State("")
     questions_state = gr.State([])
 
-    gr.HTML(TOPBAR_HTML)
+    topbar = gr.HTML(current_topbar())
 
     with gr.Column(elem_id="dr-thread"):
         with gr.Column(elem_id="dr-home") as home:
@@ -46,6 +51,7 @@ with gr.Blocks(title="Deep Research") as ui:
 
         status = gr.HTML(elem_id="dr-status-wrap")
         report = gr.Markdown(elem_id="dr-report")
+        usage_line = gr.HTML(elem_id="dr-usage-wrap")
 
     with gr.Column(elem_id="dr-composer-wrap"):
         with gr.Row(elem_id="dr-composer"):
@@ -75,9 +81,14 @@ with gr.Blocks(title="Deep Research") as ui:
             clarify_group: gr.update(visible=False),
             status: status_html("Thinking of a few questions..."),
             report: "",
+            usage_line: "",
         }
-        questions = await ResearchManager().clarify(query)
-        updates = {questions_state: questions, clarify_group: gr.update(visible=True), status: ""}
+        try:
+            questions = await ResearchManager().clarify(query)
+        except QuotaError as e:
+            yield {status: "", report: str(e), usage_line: meter.summary_html(), topbar: current_topbar()}
+            return
+        updates = {questions_state: questions, clarify_group: gr.update(visible=True), status: "", topbar: current_topbar()}
         for i, (label, box, question) in enumerate(zip(question_labels, answer_boxes, questions), start=1):
             updates[label] = f"{i}. {question}"
             updates[box] = ""
@@ -86,24 +97,25 @@ with gr.Blocks(title="Deep Research") as ui:
     async def run(query: str, questions: list[str], style: str, *answers: str):
         """ Hide the questions and stream progress, then show the report """
         clarifications = list(zip(questions, answers))
-        yield gr.update(visible=False), status_html("Starting research..."), ""
+        yield gr.update(visible=False), status_html("Starting research..."), "", "", current_topbar()
         async for kind, text in ResearchManager().run(query, clarifications, style):
             if kind == "report":
-                yield gr.update(visible=False), "", text
+                yield gr.update(visible=False), "", text, meter.summary_html(), current_topbar()
             else:
-                yield gr.update(visible=False), status_html(text), ""
+                yield gr.update(visible=False), status_html(text), "", "", current_topbar()
 
     async def run_skip(query: str, style: str):
         """ Run the research on the raw query, without clarifications """
         async for update in run(query, [], style):
             yield update
 
-    clarify_outputs = [query_state, query_textbox, home, examples_wrap, user_message, clarify_group, status, report, questions_state] + question_labels + answer_boxes
-    run_outputs = [clarify_group, status, report]
+    clarify_outputs = [query_state, query_textbox, home, examples_wrap, user_message, clarify_group, status, report, usage_line, topbar, questions_state] + question_labels + answer_boxes
+    run_outputs = [clarify_group, status, report, usage_line, topbar]
     send_button.click(clarify, inputs=query_textbox, outputs=clarify_outputs)
     query_textbox.submit(clarify, inputs=query_textbox, outputs=clarify_outputs)
     start_button.click(run, inputs=[query_state, questions_state, citation_style] + answer_boxes, outputs=run_outputs)
     skip_button.click(run_skip, inputs=[query_state, citation_style], outputs=run_outputs)
+    ui.load(current_topbar, outputs=topbar)
 
 
 if __name__ == "__main__":

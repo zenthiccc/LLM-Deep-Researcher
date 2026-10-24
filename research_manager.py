@@ -6,6 +6,8 @@ from clarifier_agent import clarifier_agent, NUM_QUESTIONS
 from llm_config import TRACING_ENABLED
 from sources import SearchContext, SearchResult, Source, error_reason, gather_sources, sources_from_annotations
 from citations import apply_citations
+from usage import QuotaError, meter
+from openai import RateLimitError
 from contextlib import nullcontext
 import asyncio
 
@@ -43,27 +45,47 @@ def no_references_note(results: list[SearchResult]) -> str:
 class ResearchManager:
 
     async def clarify(self, query: str) -> list[str]:
-        """ Generate exactly NUM_QUESTIONS clarifying questions for the query """
-        result = await Runner.run(clarifier_agent, f"Query: {query}")
+        """ Generate exactly NUM_QUESTIONS clarifying questions for the query; QuotaError if the quota can't cover a run """
+        blocked = meter.check_can_run()
+        if blocked:
+            raise QuotaError(meter.quota_notice(blocked))
+        try:
+            result = await Runner.run(clarifier_agent, f"Query: {query}")
+        except RateLimitError as e:
+            if not meter.enabled:
+                raise
+            raise QuotaError(meter.quota_notice()) from e
         questions = [q.strip() for q in result.final_output.questions if q.strip()][:NUM_QUESTIONS]
         return questions + FALLBACK_QUESTIONS[len(questions):NUM_QUESTIONS]
 
     async def run(self, query: str, clarifications: list[tuple[str, str]] | None = None, citation_style: str = "ieee"):
         """ Run the deep research process, yielding ("status", text) updates and finally ("report", markdown) """
+        blocked = meter.check_can_run(clarify=False)
+        if blocked:
+            yield "report", meter.quota_notice(blocked)
+            return
         context = format_clarifications(clarifications)
+        start = meter.snapshot()
         trace_id = gen_trace_id()
         with trace("Research trace", trace_id=trace_id) if TRACING_ENABLED else nullcontext():
             if TRACING_ENABLED:
                 yield "status", f"Starting research. Trace: https://platform.openai.com/traces/trace?trace_id={trace_id}"
             else:
                 yield "status", "Starting research..."
-            search_plan = await self.plan_searches(query, context)
-            yield "status", f"Searches planned, running {len(search_plan.searches)} searches..."
-            search_results = await self.perform_searches(search_plan)
-            yield "status", search_status(search_results)
-            sources = await gather_sources(search_results)
-            yield "status", f"Found {len(sources)} sources, writing report..." if sources else "No web sources found, writing report..."
-            report = await self.write_report(query, context, [r for r in search_results if r.summary], sources)
+            try:
+                search_plan = await self.plan_searches(query, context)
+                yield "status", f"Searches planned, running {len(search_plan.searches)} searches..."
+                search_results = await self.perform_searches(search_plan)
+                yield "status", search_status(search_results)
+                sources = await gather_sources(search_results)
+                yield "status", f"Found {len(sources)} sources, writing report..." if sources else "No web sources found, writing report..."
+                report = await self.write_report(query, context, [r for r in search_results if r.summary], sources)
+            except RateLimitError:
+                if not meter.enabled:
+                    raise
+                yield "report", meter.quota_notice()
+                return
+            meter.record_run(start)
             markdown = apply_citations(report.markdown_report, sources, citation_style)
             yield "report", markdown if sources else markdown.rstrip() + no_references_note(search_results)
 
