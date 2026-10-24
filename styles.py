@@ -12,9 +12,9 @@ MARK_HTML = """
 </span>
 """
 
-def topbar_html(usage: str = "") -> str:
-    """ The top bar, with the usage counter (if any) on the right """
-    return f'<div class="dr-topbar">{MARK_HTML}<span class="dr-topbar-name">Deep Research</span>{usage}</div>'
+def topbar_html(model: str = "", usage: str = "") -> str:
+    """ The top bar: the model chip after the name, and the usage counter (if any) on the right """
+    return f'<div class="dr-topbar">{MARK_HTML}<span class="dr-topbar-name">Deep Research</span>{model}{usage}</div>'
 
 GREETING_HTML = f"""
 <div class="dr-greeting">
@@ -101,6 +101,19 @@ footer { display: none !important; }
     color: var(--dr-text);
 }
 .dr-topbar-name { white-space: nowrap; }
+.dr-model {
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.4rem;
+    background: var(--dr-bubble);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    color: var(--dr-muted);
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: default;
+}
 .dr-usage {
     margin-left: auto;
     padding: 0.2rem 0.65rem;

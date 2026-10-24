@@ -255,10 +255,10 @@ class UsageMeter:
             return f"Searches {period}: {used} (used up, resets {self._search_reset()})"
         return f"Searches {period}: {used} ({left} left)" if left is not None else f"Searches {period}: {used}"
 
-    def summary_html(self) -> str:
-        """ The usage line under a report """
+    def summary_html(self, lead: str = "") -> str:
+        """ The usage line under a report, after an optional first line (lead) """
         if not self.enabled:
-            return ""
+            return f'<div class="dr-usage-line">{html.escape(lead)}</div>' if lead else ""
         parts = [self._calls_text(), self._searches_text()]
         runs = self.runs_left()
         if runs == 0:
@@ -268,7 +268,8 @@ class UsageMeter:
         parts.append(f"daily reset in {self._daily_reset()}")
         hint = "" if RPD else " Set GEMINI_RPD and GEMINI_SEARCH_LIMIT in .env to see what's left."
         note = f"Counts only this app's calls.{hint}"
-        return f'<div class="dr-usage-line">{html.escape(" · ".join(parts))}<br><span>{html.escape(note)}</span></div>'
+        lead = f"{html.escape(lead)}<br>" if lead else ""
+        return f'<div class="dr-usage-line">{lead}{html.escape(" · ".join(parts))}<br><span>{html.escape(note)}</span></div>'
 
     def compact_html(self) -> str:
         """ The counter in the top bar """

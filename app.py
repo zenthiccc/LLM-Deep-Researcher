@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from research_manager import Progress, ResearchManager
 from clarifier_agent import NUM_QUESTIONS
 from usage import QuotaError, meter
+from llm_config import MODEL_NAME, PROVIDER_LABEL
 from styles import CSS, JS, EXAMPLES, topbar_html, GREETING_HTML, ASSISTANT_LABEL_HTML
 
 load_dotenv(override=True)
@@ -38,8 +39,12 @@ def progress_html(progress: Progress, previous: float = 0.0) -> str:
     return f'{ASSISTANT_LABEL_HTML}<div class="dr-progress">{bar}<ol class="dr-steps">{"".join(items)}</ol>{trace}</div>'
 
 
+MODEL_LINE = f"Model: {MODEL_NAME} ({PROVIDER_LABEL})"
+MODEL_CHIP = f'<span class="dr-model" title="{html.escape(MODEL_LINE)}, used for every step">{html.escape(MODEL_NAME)}</span>'
+
+
 def current_topbar() -> str:
-    return topbar_html(meter.compact_html())
+    return topbar_html(MODEL_CHIP, meter.compact_html())
 
 
 with gr.Blocks(title="Deep Research") as ui:
@@ -145,7 +150,7 @@ with gr.Blocks(title="Deep Research") as ui:
         try:
             async for kind, update in ResearchManager().run(query, clarifications, style, web_search):
                 if kind == "report":
-                    yield {status: "", report: update, usage_line: meter.summary_html(), topbar: current_topbar()}
+                    yield {status: "", report: update, usage_line: meter.summary_html(MODEL_LINE), topbar: current_topbar()}
                 else:
                     yield {status: progress_html(update, previous), topbar: current_topbar()}
                     previous = update.fraction
