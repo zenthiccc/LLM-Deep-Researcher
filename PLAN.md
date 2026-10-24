@@ -1,4 +1,4 @@
-# PLAN — Gemini support + clarifying questions
+# PLAN — Deep Research
 
 ## Context
 The base app (Gradio UI → `ResearchManager` → planner → parallel search agents → writer → email) ran on the `openai-agents` SDK and is hard-wired to OpenAI (`gpt-5.4-mini`, OpenAI-hosted `WebSearchTool`, OpenAI tracing).
@@ -95,6 +95,14 @@ Decisions: Render Blueprint (`render.yaml`, free plan, uv build); optional login
 - [x] T12.4 Docs: README "Deploy on Render", AGENTS.md
 - [x] T12.5 Login page styled like the chat UI (mark, serif greeting, card form, accent button; light and dark)
 - [x] T12.6 Link previews: `link_preview.py` middleware (title, description, Open Graph and Twitter tags, public 1200×630 image), favicon
+
+### Phase 13 — Final docs
+Decisions: the architecture diagram is Graphviz (`docs/architecture.dot` → `docs/architecture.svg`), shown in both README and AGENTS.md; README becomes a portfolio page (overview, tech stack, screenshots, architecture, setup through deployment); screenshots are of the home page only, so no quota is spent.
+- [x] T13.1 `docs/architecture.dot` + rendered `docs/architecture.svg`
+- [x] T13.2 AGENTS.md: diagram replaces the ASCII tree; how to re-render it; README conventions
+- [x] T13.3 Home page screenshots, light and dark (`docs/`)
+- [x] T13.4 README rewrite: description, stack, preview, architecture, getting started, Render deploy
+- [x] T13.5 PLAN.md / PROGRESS.md wrap-up
 
 ### Phase 6 — Docs & config
 - [x] T6.1 `.env.example`

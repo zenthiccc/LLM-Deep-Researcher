@@ -13,16 +13,18 @@ Deep research app: asks the user 3 clarifying questions, plans web searches tune
 - Never spend the user's quota in checks: the user runs a free-tier Gemini key. Mock agents and HTTP (the `openai` client uses `httpx2`, so mock with `httpx2.MockTransport`) and ask before any live call.
 
 ## Architecture
-```
-app.py (Gradio chat UI)
-  └─ ResearchManager (research_manager.py)
-       clarify(query)        → clarifier_agent  → 3 questions
-       run(query, Q&A pairs) → planner_agent    → WebSearchPlan
-                             → search_agent ×N  (in parallel; a failed search is dropped) → SearchResult(summary, sources)
-                             → gather_sources   (sources.py: resolve redirects, fetch page metadata, dedupe, number)
-                             → writer_agent     → ReportData with [n] citation markers
-                             → apply_citations  (citations.py: IEEE or APA in-text + reference list)
-```
+![Architecture](docs/architecture.svg)
+
+The diagram is Graphviz: `docs/architecture.dot` is the source, and the README shows it too. Read the `.dot` file for the full graph as text. When a module, agent or data flow changes, update the `.dot` and render it again with `dot -Tsvg docs/architecture.dot -o docs/architecture.svg` (`brew install graphviz`). Commit both files.
+
+Pipeline in short:
+- `clarify(query)`: clarifier_agent returns 3 questions.
+- `run(query, Q&A pairs)`:
+  1. planner_agent returns a WebSearchPlan.
+  2. search_agent ×N run in parallel (a failed search is dropped). Each returns a SearchResult(summary, sources).
+  3. gather_sources (`sources.py`) resolves redirects, fetches page metadata, dedupes and numbers the sources.
+  4. writer_agent returns ReportData with `[n]` markers.
+  5. apply_citations (`citations.py`) adds IEEE or APA in-text citations and the reference list.
 - `llm_config.py` is the single source of truth for the provider. `MODEL_PROVIDER=openai|gemini` (default `openai`), `DEFAULT_MODEL_NAME` overrides the model (defaults: `gpt-5.4-mini` / `gemini-3.5-flash-lite`). It fails fast at import when the provider's API key is missing.
 - Gemini runs through its OpenAI-compatible endpoint (`OpenAIChatCompletionsModel`). OpenAI tracing is turned off on Gemini.
 - Web search: OpenAI uses the hosted `WebSearchTool`. Gemini uses the `web_search` function tool in `gemini_search.py` (Google Search grounding via `google-genai`), because hosted OpenAI tools don't work with Gemini.
@@ -45,4 +47,5 @@ app.py (Gradio chat UI)
 ## Workflow
 - Ask before making architecture decisions; the user wants to be consulted on them.
 - Track work in `PLAN.md` (tasks with checkboxes) and `PROGRESS.md` (status table and log). Update both when a task is done.
+- `README.md` is the project's portfolio page: the overview, screenshots (`docs/screenshot-home-{light,dark}.png`, taken with no API calls), the architecture diagram, and setup through deployment. Keep it in step with features, env vars and the UI's wording.
 - Commits follow Conventional Commits, one logical change per commit, on a feature branch off `master`. Don't push unless asked.

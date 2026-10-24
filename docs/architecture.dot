@@ -1,0 +1,53 @@
+// Architecture of Deep Research. Render with:
+//   dot -Tsvg docs/architecture.dot -o docs/architecture.svg
+digraph architecture {
+    graph [rankdir=TB, compound=true, bgcolor="#faf9f5", pad=0.4, nodesep=0.5, ranksep=0.5, fontname="Helvetica", fontsize=13, fontcolor="#1f1e1d"];
+    node  [shape=box, style="rounded,filled", fillcolor="#ffffff", color="#d9d5ca", fontname="Helvetica", fontsize=12, fontcolor="#1f1e1d", penwidth=1.2, margin="0.2,0.08"];
+    edge  [color="#8a857b", fontname="Helvetica", fontsize=10, fontcolor="#6b675f", arrowsize=0.7, penwidth=1.1];
+
+    user [label="User (browser)", shape=oval, fillcolor="#c96442", fontcolor="#ffffff", color="#c96442"];
+
+    subgraph cluster_ui {
+        label="Web app"; labeljust=l; style="rounded,dashed"; color="#c9c4b8";
+        middleware [label="link_preview.py\nmeta tags · preview image · favicon"];
+        app [label="app.py · Gradio chat UI\nlogin · questions · progress card · report", fillcolor="#f4e4dc", color="#c96442"];
+        middleware -> app;
+    }
+
+    subgraph cluster_pipeline {
+        label="ResearchManager (research_manager.py)"; labeljust=l; style="rounded,dashed"; color="#c9c4b8";
+        clarifier [label="clarifier_agent\n3 clarifying questions"];
+        planner   [label="planner_agent\nWebSearchPlan"];
+        search    [label="search_agent × N\nin parallel", shape=box3d, style="filled"];
+        gather    [label="sources.py · gather_sources\nresolve redirects · page metadata · dedupe"];
+        writer    [label="writer_agent\nmarkdown report with [n] markers"];
+        cite      [label="citations.py · apply_citations\nIEEE or APA in-text + reference list"];
+        clarifier -> planner [label="  answers"];
+        planner -> search [label="  search terms"];
+        search -> gather [label="  summaries + sources"];
+        gather -> writer [label="  numbered sources"];
+        writer -> cite;
+        planner -> writer [style=dashed, label="  memory-only run\n  (no search quota)"];
+    }
+
+    subgraph cluster_provider {
+        label="Model provider"; labeljust=l; style="rounded,dashed"; color="#c9c4b8";
+        config [label="llm_config.py\nMODEL_PROVIDER · one model for every agent"];
+        openai [label="OpenAI API\n+ hosted WebSearchTool", shape=cylinder, fillcolor="#f0eee6"];
+        gemini [label="Gemini API (OpenAI-compatible)\n+ Google Search grounding", shape=cylinder, fillcolor="#f0eee6"];
+        config -> openai;
+        config -> gemini;
+    }
+
+    subgraph cluster_usage {
+        label="Free-tier guard (Gemini only)"; labeljust=l; style="rounded,dashed"; color="#c9c4b8";
+        meter [label="usage.py · UsageMeter\ncounts calls · RPM throttle · quota check"];
+        store [label=".usage.json or Upstash Redis", shape=cylinder, fillcolor="#f0eee6"];
+        meter -> store [label="  persist counts"];
+    }
+
+    user -> middleware [label="  HTTPS"];
+    app -> clarifier [lhead=cluster_pipeline, label="  clarify(query), run(query, answers, style)\n  ← questions, progress, report"];
+    planner -> config [ltail=cluster_pipeline, lhead=cluster_provider, label="  agent calls"];
+    gemini -> meter [label="  every request"];
+}
